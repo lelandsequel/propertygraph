@@ -1,0 +1,13 @@
+{
+  "name": "propertygraph",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "seed": "npx tsx scripts/ingest/seed.ts"
+  }
+}
