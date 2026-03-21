@@ -8,6 +8,9 @@
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
-    "seed": "npx tsx scripts/ingest/seed.ts"
+    "seed": "npx tsx scripts/ingest/seed.ts",
+    "ingest": "bash scripts/run_ingest.sh",
+    "ingest:demo": "bash scripts/run_ingest.sh 5000",
+    "ingest:scale": "bash scripts/run_ingest.sh 50000"
   }
 }

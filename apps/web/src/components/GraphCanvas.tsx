@@ -1,75 +1,87 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import {
-  ReactFlow,
-  Background,
+import React, { useCallback, useState } from "react";
+import ReactFlow, {
+  Node,
+  Edge,
   Controls,
-  MiniMap,
+  Background,
   useNodesState,
   useEdgesState,
-  type Node,
-  type Edge,
-  type NodeTypes,
-  MarkerType,
-  BackgroundVariant,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import PropertyNode from "./nodes/PropertyNode";
-import EntityNode from "./nodes/EntityNode";
-import IndividualNode from "./nodes/IndividualNode";
+  MiniMap,
+  NodeTypes,
+} from "reactflow";
+import "reactflow/dist/style.css";
 
 interface GraphCanvasProps {
-  nodes: any[];
-  edges: any[];
-  onNodeClick: (node: any) => void;
+  nodes: Node[];
+  edges: Edge[];
+  onNodeClick?: (node: Node) => void;
 }
 
-export default function GraphCanvas({ nodes: initialNodes, edges: initialEdges, onNodeClick }: GraphCanvasProps) {
-  const nodeTypes: NodeTypes = useMemo(
-    () => ({
-      property: PropertyNode,
-      entity: EntityNode,
-      individual: IndividualNode,
-    }),
-    []
-  );
+/**
+ * Custom node component for PropertyGraph
+ */
+const PropertyNode = ({ data }: { data: any }) => (
+  <div className="px-3 py-2 bg-surface border border-border rounded text-white text-xs font-medium min-w-[120px]">
+    <div className="truncate">{data.label}</div>
+    {data.sublabel && (
+      <div className="text-[10px] text-zinc-500 truncate">{data.sublabel}</div>
+    )}
+    {data.value && (
+      <div className="text-[10px] text-accent mt-1 font-mono">
+        ${(data.value / 1_000_000).toFixed(1)}M
+      </div>
+    )}
+  </div>
+);
 
-  const mappedNodes: Node[] = useMemo(
-    () =>
-      initialNodes.map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        data: n.data,
-      })),
-    [initialNodes]
-  );
+const EntityNode = ({ data }: { data: any }) => (
+  <div className="px-3 py-2 bg-amber/10 border border-amber rounded text-white text-xs font-medium min-w-[120px]">
+    <div className="truncate font-bold">{data.label}</div>
+    {data.sublabel && (
+      <div className="text-[10px] text-zinc-400 truncate">{data.sublabel}</div>
+    )}
+  </div>
+);
 
-  const mappedEdges: Edge[] = useMemo(
-    () =>
-      initialEdges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-        animated: e.animated ?? false,
-        style: { stroke: e.animated ? "#3B82F6" : "#333", strokeWidth: 1.5 },
-        labelStyle: { fill: "#666", fontSize: 10, fontFamily: "monospace" },
-        markerEnd: { type: MarkerType.ArrowClosed, color: e.animated ? "#3B82F6" : "#333" },
-      })),
-    [initialEdges]
-  );
+const IndividualNode = ({ data }: { data: any }) => (
+  <div className="px-3 py-2 bg-purple/10 border border-purple rounded text-white text-xs font-medium min-w-[120px]">
+    <div className="truncate">{data.label}</div>
+    {data.sublabel && (
+      <div className="text-[10px] text-zinc-400 truncate">{data.sublabel}</div>
+    )}
+  </div>
+);
 
-  const [nodes, , onNodesChange] = useNodesState(mappedNodes);
-  const [edges, , onEdgesChange] = useEdgesState(mappedEdges);
+const nodeTypes: NodeTypes = {
+  property: PropertyNode,
+  entity: EntityNode,
+  individual: IndividualNode,
+};
+
+export default function GraphCanvas({
+  nodes: initialNodes,
+  edges: initialEdges,
+  onNodeClick,
+}: GraphCanvasProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const handleNodeClick = useCallback(
-    (_: any, node: Node) => {
-      const original = initialNodes.find((n) => n.id === node.id);
-      if (original) onNodeClick(original);
+    (event: React.MouseEvent, node: Node) => {
+      onNodeClick?.(node);
+
+      // Optional: Expand node on double-click
+      if (event.detail === 2) {
+        if (!expanded.has(node.id)) {
+          setExpanded((prev) => new Set(prev).add(node.id));
+          // Could fetch more data here
+        }
+      }
     },
-    [initialNodes, onNodeClick]
+    [onNodeClick, expanded]
   );
 
   return (
@@ -81,24 +93,17 @@ export default function GraphCanvas({ nodes: initialNodes, edges: initialEdges, 
       onNodeClick={handleNodeClick}
       nodeTypes={nodeTypes}
       fitView
-      fitViewOptions={{ padding: 0.3 }}
-      minZoom={0.1}
-      maxZoom={2}
-      proOptions={{ hideAttribution: true }}
+      attributionPosition="bottom-left"
     >
-      <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1a1a1a" />
-      <Controls
-        showInteractive={false}
-        style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: 0 }}
-      />
+      <Background color="#27272a" gap={16} size={0.5} />
+      <Controls />
       <MiniMap
-        nodeColor={(n) => {
-          if (n.type === "property") return "#3B82F6";
-          if (n.type === "individual") return "#8B5CF6";
-          return "#F59E0B";
+        nodeColor={(node) => {
+          if (node.type === "property") return "#f97316";
+          if (node.type === "individual") return "#a855f7";
+          return "#fbbf24";
         }}
-        maskColor="rgba(0,0,0,0.8)"
-        style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 0 }}
+        maskColor="rgba(5, 5, 8, 0.9)"
       />
     </ReactFlow>
   );
