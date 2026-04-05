@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   if (minYear) query = query.gte("year_built", minYear);
   if (maxYear) query = query.lte("year_built", maxYear);
 
-  query = query.order("market_value", { ascending: false, nullsFirst: false });
+  query = query.order("market_value", { ascending: false, nullsFirst: false }).order("id", { ascending: true });
   query = query.range(offset, offset + limit - 1);
 
   const { data, count, error } = await query;
@@ -59,18 +59,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ properties: [], total: 0, page, error: error.message });
   }
 
-  const properties = (data ?? []).map((p) => ({
+  const properties = (data ?? []).map((p) => {
+    const rd = p.raw_data as Record<string, any> | null;
+    const rawVal = rd?.appraised_val ? parseInt(rd.appraised_val.replace(/^0+/, "") || "0", 10) : 0;
+    const effectiveValue = (p.market_value && p.market_value > 0) ? p.market_value : (p.estimated_value && p.estimated_value > 0 ? p.estimated_value : rawVal);
+    return ({
     id: p.id,
-    address: p.address,
-    city: p.city,
+    address: p.address || rd?.situs_address || null,
+    city: p.city || rd?.situs_city || null,
     state: p.state,
-    zip: p.zip,
+    zip: p.zip || rd?.situs_zip || null,
     county: p.county,
     property_use: p.property_use,
-    market_value: p.market_value || p.estimated_value || 0,
+    market_value: effectiveValue,
     year_built: p.year_built,
-    owner_name: p.owner_name || (p.raw_data as Record<string, unknown>)?.OWNER || null,
-  }));
+    owner_name: p.owner_name || rd?.appr_owner_name || rd?.py_owner_name || null,
+  });});
 
   return NextResponse.json({
     properties,
