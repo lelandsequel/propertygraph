@@ -3,10 +3,11 @@ import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   const [propertiesRes, signalsRes, marketsRes] = await Promise.all([
-    supabase.from("properties").select("id", { count: "exact", head: true }),
-    supabase.from("signals").select("id", { count: "exact", head: true }),
+    // properties_clean = verified real data only (migrated 2026-04-06)
+    supabase.from("properties_clean").select("id", { count: "planned", head: true }),
+    supabase.from("signals").select("id", { count: "planned", head: true }),
     supabase
-      .from("properties")
+      .from("properties_clean")
       .select("county, state, market_value")
       .not("county", "is", null)
       .gt("market_value", 0)

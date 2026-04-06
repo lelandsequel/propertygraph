@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const pattern = `%${q}%`;
     const [propertiesRes, entitiesRes] = await Promise.all([
       supabase
-        .from("properties")
+        .from("properties_clean")
         .select("id, address, city, state, zip, estimated_value")
         .ilike("address", pattern)
         .limit(8),
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   // Advanced search for /search page
   let query = supabase
-    .from("properties")
+    .from("properties_clean")
     .select("id, address, city, state, zip, county, property_use, market_value, estimated_value, year_built, owner_name, raw_data", { count: "exact" });
 
   if (q) query = query.ilike("address", `%${q}%`);
