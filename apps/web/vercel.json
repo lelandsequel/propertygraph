@@ -1,6 +1,9 @@
 {
   "version": 2,
   "builds": [
-    { "src": "package.json", "use": "@vercel/next" }
+    { "src": "vercel.json", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "https://propertygraph-web-stitch.vercel.app/$1", "status": 301 }
   ]
 }
