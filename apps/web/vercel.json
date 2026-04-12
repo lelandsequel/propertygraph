@@ -1,9 +1,6 @@
 {
   "version": 2,
   "builds": [
-    { "src": "vercel.json", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "https://web-stitch-2nfj3zm48-lelandsequel-0aae5153.vercel.app/$1", "status": 301 }
+    { "src": "package.json", "use": "@vercel/next" }
   ]
 }
