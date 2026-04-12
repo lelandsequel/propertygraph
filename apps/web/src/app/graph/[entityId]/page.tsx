@@ -15,13 +15,18 @@ export default function GraphPage() {
   const [selectedNode, setSelectedNode] = useState<any>(null);
 
   useEffect(() => {
-    fetch(`/api/graph/${entityId}`)
-      .then((r) => r.json())
-      .then((data) => {
+    async function loadGraph() {
+      try {
+        const r = await fetch(`/api/graph/${entityId}`);
+        const data = await r.json();
         setGraphData(data);
+      } catch (err) {
+        console.error('Failed to load graph:', err);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    }
+    loadGraph();
   }, [entityId]);
 
   const handleNodeClick = useCallback((node: any) => {

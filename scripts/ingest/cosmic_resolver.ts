@@ -297,7 +297,7 @@ export async function runCosmicPipeline(
 /**
  * CLI entry point
  */
-if (require.main === module) {
+async function main() {
   // Mock data for testing
   const mockProperties: ScrapedProperty[] = [
     {
@@ -341,8 +341,16 @@ if (require.main === module) {
     },
   ];
 
-  runCosmicPipeline(mockProperties).then((result) => {
+  try {
+    const result = await runCosmicPipeline(mockProperties);
     console.log("\n📊 COSMIC Output:");
     console.log(JSON.stringify(result, null, 2));
-  });
+  } catch (err) {
+    console.error('Pipeline error:', err);
+    process.exit(1);
+  }
+}
+
+if (require.main === module) {
+  main();
 }

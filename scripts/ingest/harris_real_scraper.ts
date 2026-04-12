@@ -340,12 +340,20 @@ export async function scrapeRealHarrisCounty(
 }
 
 // CLI for testing
-if (require.main === module) {
+async function main() {
   const count = parseInt(process.argv[2] || "100");
   const live = process.argv[3] === "--live";
 
-  scrapeRealHarrisCounty(count, live).then((data) => {
+  try {
+    const data = await scrapeRealHarrisCounty(count, live);
     console.log(`\n📊 Sample properties:`);
     console.log(JSON.stringify(data.slice(0, 3), null, 2));
-  });
+  } catch (err) {
+    console.error('Scraper error:', err);
+    process.exit(1);
+  }
+}
+
+if (require.main === module) {
+  main();
 }

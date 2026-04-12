@@ -33,13 +33,20 @@ export default function HomePage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/signals").then((r) => r.json()),
-      fetch("/api/stats").then((r) => r.json()).catch(() => ({ properties: 0, markets: 0, signals: 0, marketCards: [] })),
-    ]).then(([sig, st]) => {
-      setSignals(sig);
-      setStats(st);
-    });
+    async function load() {
+      try {
+        const [sigRes, stRes] = await Promise.all([
+          fetch("/api/signals"),
+          fetch("/api/stats").catch(() => ({ properties: 0, markets: 0, signals: 0, marketCards: [] }))
+        ]);
+        const [sig, st] = await Promise.all([sigRes.json(), stRes.json()]);
+        setSignals(sig);
+        setStats(st);
+      } catch (e) {
+        console.error('Failed to load:', e);
+      }
+    }
+    load();
   }, []);
 
   useEffect(() => {
@@ -47,13 +54,15 @@ export default function HomePage() {
       setResults(null);
       return;
     }
-    const timer = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(query)}`)
-        .then((r) => r.json())
-        .then((data) => {
-          setResults(data);
-          setShowResults(true);
-        });
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await r.json();
+        setResults(data);
+        setShowResults(true);
+      } catch (e) {
+        console.error('Search failed:', e);
+      }
     }, 150);
     return () => clearTimeout(timer);
   }, [query]);

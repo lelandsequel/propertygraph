@@ -76,23 +76,30 @@ function SearchContent() {
       return;
     }
 
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (county) params.set("county", county);
-    if (state) params.set("state", state);
-    if (use) params.set("use", use);
-    if (minValue) params.set("minValue", minValue);
-    if (maxValue) params.set("maxValue", maxValue);
-    if (minYear) params.set("minYear", minYear);
-    if (maxYear) params.set("maxYear", maxYear);
-    params.set("page", String(page));
+    async function search() {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (county) params.set("county", county);
+      if (state) params.set("state", state);
+      if (use) params.set("use", use);
+      if (minValue) params.set("minValue", String(minValue));
+      if (maxValue) params.set("maxValue", String(maxValue));
+      if (minYear) params.set("minYear", String(minYear));
+      if (maxYear) params.set("maxYear", String(maxYear));
+      params.set("page", String(page));
 
-    fetch(`/api/search?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => setResults(data))
-      .catch(() => setResults(null))
-      .finally(() => setLoading(false));
+      try {
+        const r = await fetch(`/api/search?${params.toString()}`);
+        const data = await r.json();
+        setResults(data);
+      } catch (e) {
+        setResults(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    search();
   }, [q, county, state, use, minValue, maxValue, minYear, maxYear, page]);
 
   const applyFilters = () => {
