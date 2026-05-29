@@ -1,0 +1,2374 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PropertyGraph | Institutional Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&family=Space+Grotesk:wght@400;500;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "background": "#131314","surface": "#131314","surface-dim": "#131314",
+        "surface-container-lowest": "#0e0e0f","surface-container-low": "#1c1b1c",
+        "surface-container": "#201f20","surface-container-high": "#2a2a2b",
+        "surface-container-highest": "#353436","surface-bright": "#3a393a",
+        "surface-variant": "#353436","on-surface": "#e5e2e3","on-background": "#e5e2e3",
+        "on-surface-variant": "#c1c6d7","outline": "#8b90a0","outline-variant": "#414755",
+        "primary": "#a7c8ff","primary-container": "#3291ff","on-primary": "#003061",
+        "on-primary-container": "#002a55","on-primary-fixed": "#001b3c",
+        "secondary": "#4edea3","secondary-container": "#00a572","on-secondary": "#003824",
+        "tertiary": "#ffb95f","tertiary-container": "#ca8100","on-tertiary": "#472a00",
+        "error": "#ffb4ab","error-container": "#93000a",
+      },
+      fontFamily: { "headline": ["Manrope"], "body": ["Inter"], "label": ["Space Grotesk"] },
+      borderRadius: { "DEFAULT": "0.125rem","lg": "0.25rem","xl": "0.5rem","full": "0.75rem" },
+    }
+  }
+}
+</script>
+<style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align: middle; }
+.glass-panel { background: rgba(28,27,28,0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+.grain-overlay { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"); opacity:0.025; pointer-events:none; }
+.custom-scrollbar::-webkit-scrollbar { width:3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background:#414755; border-radius:10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background:transparent; }
+.nav-link { font-family:'Manrope',sans-serif; font-weight:700; font-size:0.8rem; letter-spacing:0.05em; text-transform:uppercase; color:rgba(229,226,227,0.5); transition:color 0.3s cubic-bezier(0.2,0,0,1); cursor:pointer; padding-bottom:2px; }
+.nav-link:hover { color:#a7c8ff; }
+.nav-link.active { color:#a7c8ff; border-bottom:2px solid #3291ff; }
+.pg-transition { transition: all 0.4s cubic-bezier(0.2,0,0,1); }
+.score-ring-secondary { stroke:#4edea3; }
+.score-ring-primary { stroke:#a7c8ff; }
+.score-ring-tertiary { stroke:#ffb95f; }
+
+/* ── GUIDED DEMO ── */
+#demo-overlay { position:fixed; inset:0; z-index:999; pointer-events:none; }
+#demo-overlay.active { pointer-events:all; }
+.demo-backdrop { position:absolute; inset:0; background:rgba(13,13,14,0.35); }
+.demo-card {
+  position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
+  background:#201f20; border:1px solid rgba(167,200,255,0.25);
+  border-radius:1rem; padding:1.5rem 2rem; width:480px; max-width:90vw;
+  box-shadow:0 0 60px rgba(167,200,255,0.08);
+}
+.demo-step-dot { width:8px; height:8px; border-radius:50%; background:#414755; transition:all .3s; }
+.demo-step-dot.active { background:#a7c8ff; transform:scale(1.3); }
+.demo-highlight {
+  position:absolute; border-radius:0.75rem; pointer-events:none; z-index:998;
+  box-shadow:0 0 0 4px rgba(167,200,255,0.5), 0 0 30px rgba(167,200,255,0.2);
+  transition: all 0.5s cubic-bezier(0.2,0,0,1);
+}
+#leaflet-map { background:#0e0e0f; width:100%; height:100%; min-height:400px; }
+.leaflet-popup-content-wrapper { background:#201f20; color:#e5e2e3; border:1px solid rgba(65,71,85,0.3); border-radius:0.5rem; }
+.leaflet-popup-tip { background:#201f20; }
+</style>
+</head>
+<body class="bg-surface-dim text-on-surface font-body selection:bg-primary/30 overflow-hidden h-screen flex flex-col">
+
+<!-- TOPNAV -->
+<nav class="w-full z-50 bg-[#1c1b1c]/70 backdrop-blur-xl shadow-2xl flex items-center justify-between px-6 h-16 flex-shrink-0">
+  <div class="flex items-center gap-8">
+    <span class="text-xl font-black tracking-tighter text-primary uppercase font-headline cursor-pointer" onclick="showView('overview')">PropertyGraph</span>
+    <div class="hidden md:flex items-center gap-6 h-full">
+      <span class="nav-link" id="nav-overview" onclick="showView('overview')">Overview</span>
+      <span class="nav-link" id="nav-investor" onclick="showView('investor')">Investor Scan</span>
+      <span class="nav-link" id="nav-market" onclick="showView('market')">Market Intelligence</span>
+      <span class="nav-link" id="nav-insights" onclick="showView('insights')">COSMIC Insights</span>
+      <span class="nav-link" id="nav-summary" onclick="showView('summary')">Market Summary</span>
+      <span class="nav-link" id="nav-watchlist" onclick="showView('watchlist')">Watchlist</span>
+    </div>
+  </div>
+  <div class="flex items-center gap-4">
+    <div class="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-full border border-outline-variant/20">
+      <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span></span>
+      <span class="font-label text-[10px] font-bold tracking-widest text-on-surface uppercase">LIVE · 2,220,372 PROPERTIES</span>
+    </div>
+    <button onclick="openTourSelector()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-label text-[10px] font-bold uppercase tracking-widest pg-transition">
+      <span class="material-symbols-outlined text-sm">play_circle</span>Guided Tour
+    </button>
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant/20 text-outline/60" title="PropertyGraph Live Mode">
+      <span class="material-symbols-outlined text-sm text-primary/60">verified_user</span>
+      <span class="font-label text-[9px] font-bold uppercase tracking-widest">Live Mode</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════ VIEW: MARKET INTELLIGENCE ══════════ -->
+<div id="view-market" class="flex-1 flex overflow-hidden relative" style="min-height:0">
+
+  <!-- Map BG (Leaflet) -->
+  <div class="absolute inset-0 z-0" style="left:0;right:0;top:0;bottom:0;width:100%;height:100%">
+    <div id="leaflet-map" style="width:100%;height:100%;min-height:400px;background:#0e0e0f"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-surface-dim via-transparent to-transparent opacity-60 pointer-events-none z-[400]"></div>
+  </div>
+
+  <!-- Left Panel -->
+  <aside class="absolute left-6 top-6 bottom-6 w-80 z-20 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
+    <div class="glass-panel p-6 rounded-xl border border-outline-variant/10 flex flex-col gap-5">
+      <!-- Search -->
+      <div class="relative">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-lg">search</span>
+        <input id="mkt-search" class="w-full bg-surface-container-low border-none rounded-lg pl-10 py-3 text-sm focus:ring-1 focus:ring-primary/40 placeholder:text-outline/40" placeholder="Street name or number..." type="text" autocomplete="off"/>
+      </div>
+      <!-- County -->
+      <div>
+        <label class="font-label text-[10px] text-outline uppercase tracking-widest mb-2 block">Geography Focus</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button class="county-mkt bg-surface-container text-on-surface/60 text-[10px] font-bold py-2 rounded font-label uppercase" data-c="Travis" onclick="setMktCounty('Travis')">AUSTIN TX</button>
+          <button class="county-mkt bg-surface-container-highest text-primary text-[10px] font-bold py-2 rounded border border-primary/20 font-label uppercase" data-c="Harris" onclick="setMktCounty('Harris')">HARRIS</button>
+          <button class="county-mkt bg-surface-container text-on-surface/60 text-[10px] font-bold py-2 rounded font-label uppercase" data-c="Suffolk" onclick="setMktCounty('Suffolk')">BOSTON</button>
+        </div>
+      </div>
+      <!-- Mode -->
+      <div>
+        <label class="font-label text-[10px] text-outline uppercase tracking-widest mb-2 block">Intelligence Mode</label>
+        <div class="flex flex-wrap gap-2">
+          <button class="mkt-mode px-3 py-1.5 rounded bg-surface-container-highest text-[10px] font-bold uppercase tracking-tight text-primary border border-primary/20 font-label" data-m="investor" onclick="setMktMode('investor')">LLC Entity</button>
+          <button class="mkt-mode px-3 py-1.5 rounded bg-surface-container text-[10px] font-bold uppercase tracking-tight text-on-surface/80 border border-outline-variant/10 font-label" data-m="market" onclick="setMktMode('market')">High Value</button>
+          <button class="mkt-mode px-3 py-1.5 rounded bg-surface-container text-[10px] font-bold uppercase tracking-tight text-on-surface/80 border border-outline-variant/10 font-label" data-m="search" onclick="setMktMode('search')">Search</button>
+        </div>
+      </div>
+      <!-- Quick actions -->
+      <div class="pt-2 border-t border-outline-variant/10 space-y-2">
+        <button onclick="showDealFinder()" class="w-full flex items-center justify-between group px-4 py-3 bg-primary-container/20 text-primary rounded-lg pg-transition hover:bg-primary-container/30">
+          <span class="font-headline text-xs font-bold uppercase tracking-tight">Find Best Deals</span>
+          <span class="material-symbols-outlined text-sm group-hover:translate-x-1 pg-transition">analytics</span>
+        </button>
+        <button onclick="showView('insights')" class="w-full flex items-center justify-between group px-4 py-3 bg-secondary-container/10 text-secondary rounded-lg pg-transition hover:bg-secondary-container/20">
+          <span class="font-headline text-xs font-bold uppercase tracking-tight">Surface Targets</span>
+          <span class="material-symbols-outlined text-sm group-hover:translate-x-1 pg-transition">my_location</span>
+        </button>
+      </div>
+      <!-- List -->
+      <div class="space-y-1" id="mkt-list" style="max-height:280px;overflow-y:auto"></div>
+    </div>
+  </aside>
+
+  <!-- Right Detail Panel -->
+  <main class="absolute right-6 top-6 bottom-6 w-[400px] z-20 overflow-y-auto custom-scrollbar" id="mkt-detail">
+    <div class="glass-panel p-6 rounded-xl border border-outline-variant/10 h-full flex items-center justify-center">
+      <div class="text-center space-y-3">
+        <span class="material-symbols-outlined text-4xl text-outline/20">hub</span>
+        <p class="font-headline text-sm font-bold text-outline/40 uppercase tracking-widest">Select a Property</p>
+        <p class="text-[11px] text-outline/30">COSMIC analysis will appear here</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom tab bar -->
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 glass-panel p-2 rounded-full border border-outline-variant/20 z-30">
+    <button id="tab-feed" onclick="setMapTab('feed')" class="px-6 py-2 rounded-full text-on-surface/50 font-label text-[10px] font-bold uppercase tracking-widest">Market Feed</button>
+    <button id="tab-heatmap" onclick="setMapTab('heatmap')" class="px-6 py-2 rounded-full bg-primary text-on-primary font-label text-[10px] font-bold uppercase tracking-widest">Heatmap</button>
+    <button id="tab-ownership" onclick="setMapTab('ownership')" class="px-6 py-2 rounded-full text-on-surface/50 font-label text-[10px] font-bold uppercase tracking-widest">Ownership</button>
+  </div>
+</div>
+
+<!-- ══════════ VIEW: INVESTOR SCAN ══════════ -->
+<div id="view-investor" class="flex-1 flex overflow-hidden hidden">
+  <!-- Sidebar -->
+  <aside class="h-full w-64 flex-shrink-0 flex flex-col py-6 bg-surface-dim border-r border-outline-variant/10">
+    <div class="px-6 mb-8 flex items-center gap-3">
+      <div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center">
+        <span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL' 1">terminal</span>
+      </div>
+      <div>
+        <h2 class="font-label text-xs uppercase tracking-widest text-primary-container">Core Intelligence</h2>
+        <p class="text-[10px] text-on-surface-variant/50">V3.4 Obsidian</p>
+      </div>
+    </div>
+    <div class="flex-1 px-4 space-y-1">
+      <button class="w-full flex items-center gap-3 px-4 py-3 font-label text-xs uppercase tracking-widest bg-surface-container text-primary border-l-4 border-primary-container rounded-r-lg">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">insights</span> Intelligence
+      </button>
+      <button onclick="showView('watchlist')" class="w-full flex items-center gap-3 px-4 py-3 font-label text-xs uppercase tracking-widest text-on-surface-variant/40 hover:bg-surface-container-low hover:text-on-surface pg-transition rounded-lg">
+        <span class="material-symbols-outlined">bookmark</span> Portfolio
+      </button>
+      <button onclick="openReportsModal()" class="w-full flex items-center gap-3 px-4 py-3 font-label text-xs uppercase tracking-widest text-on-surface-variant/40 hover:bg-surface-container-low hover:text-on-surface pg-transition rounded-lg">
+        <span class="material-symbols-outlined">description</span> Reports
+      </button>
+      <button onclick="openRiskModal()" class="w-full flex items-center gap-3 px-4 py-3 font-label text-xs uppercase tracking-widest text-on-surface-variant/40 hover:bg-surface-container-low hover:text-on-surface pg-transition rounded-lg">
+        <span class="material-symbols-outlined">shield</span> Risk Matrix
+      </button>
+      <div class="pt-6 px-4">
+        <button class="w-full py-2 bg-primary-container text-on-primary-fixed font-label text-[10px] font-bold uppercase tracking-tighter rounded-md">New Analysis</button>
+      </div>
+    </div>
+    <div class="px-4 mt-auto space-y-1">
+      <button class="w-full flex items-center gap-3 px-4 py-2 font-label text-xs uppercase tracking-widest text-on-surface-variant/40 hover:text-on-surface pg-transition">
+        <span class="material-symbols-outlined">help_outline</span> Support
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 flex flex-col overflow-hidden bg-surface-dim relative">
+    <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)] z-10"></div>
+    <div class="absolute inset-0 grain-overlay z-10"></div>
+    <section class="relative z-20 px-10 pt-8 pb-4 flex-shrink-0">
+      <div class="max-w-5xl mx-auto space-y-4">
+        <h1 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Investor Scan Engine</h1>
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex-1 min-w-[260px] relative">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+            <input id="inv-search" class="w-full bg-surface-container-low border-none rounded-xl py-3 pl-12 pr-4 text-on-surface font-body placeholder:text-outline/50 focus:ring-2 focus:ring-primary/20 pg-transition" placeholder="Search investor-owned properties..." type="text" autocomplete="off"/>
+          </div>
+          <div class="flex gap-2">
+            <span class="county-inv px-3 py-2 bg-surface-container rounded-lg font-label text-[10px] uppercase tracking-widest text-on-surface/40 flex items-center gap-1 cursor-pointer" data-c="Travis" onclick="setInvCounty('Travis')">Travis TX</span>
+            <span class="county-inv px-3 py-2 bg-surface-container-high rounded-lg font-label text-[10px] uppercase tracking-widest text-primary flex items-center gap-1 cursor-pointer" data-c="Harris" onclick="setInvCounty('Harris')">Harris TX</span>
+            <span class="county-inv px-3 py-2 bg-surface-container rounded-lg font-label text-[10px] uppercase tracking-widest text-on-surface/40 flex items-center gap-1 cursor-pointer" data-c="Suffolk" onclick="setInvCounty('Suffolk')">Boston MA</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="flex-1 overflow-y-auto px-10 pb-10 relative z-20 custom-scrollbar" id="inv-grid">
+      <div class="max-w-5xl mx-auto">
+        <div class="text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">Loading investor scan...</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Right monitors panel -->
+  <aside class="w-72 bg-surface-container border-l border-outline-variant/10 flex flex-col p-5 overflow-hidden flex-shrink-0">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="font-headline text-base font-bold">Active Monitors</h2>
+      <span class="bg-secondary/10 text-secondary px-2 py-1 rounded text-[10px] font-label font-bold uppercase tracking-widest">Live</span>
+    </div>
+    <div class="space-y-4 flex-1 overflow-y-auto custom-scrollbar">
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant/50">TX Institutional Holdings</span>
+          <span class="text-[10px] text-primary">Live</span>
+        </div>
+        <div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10 flex items-center gap-3">
+          <div class="w-1 h-8 bg-secondary rounded"></div>
+          <div>
+            <p class="text-xs font-bold">LLC Entity Portfolio</p>
+            <p class="text-[10px] text-on-surface-variant/50">Filtering $500K+ assets</p>
+          </div>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant/50">COSMIC Pipeline</span>
+          <span class="text-[10px] text-on-surface-variant/30">Active</span>
+        </div>
+        <div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10 flex items-center gap-3">
+          <div class="w-1 h-8 bg-primary rounded"></div>
+          <div>
+            <p class="text-xs font-bold">Acquisition Signals</p>
+            <p class="text-[10px] text-on-surface-variant/50">AURORA gate active</p>
+          </div>
+        </div>
+      </div>
+      <!-- Stats -->
+      <div class="pt-4 space-y-3">
+        <h3 class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/40">Database</h3>
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs"><span class="text-on-surface-variant/60">Harris TX</span><span class="font-bold text-amber-400">1,601,285</span></div>
+          <div class="flex justify-between text-xs"><span class="text-on-surface-variant/60">Travis TX</span><span class="font-bold text-primary">435,642</span></div>
+          <div class="flex justify-between text-xs"><span class="text-on-surface-variant/60">Suffolk MA</span><span class="font-bold text-secondary">183,445</span></div>
+          <div class="flex justify-between text-xs border-t border-outline-variant/10 pt-2"><span class="text-on-surface-variant/60">Total</span><span class="font-bold text-on-surface">2,220,372</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ══════════ VIEW: COSMIC INSIGHTS ══════════ -->
+<div id="view-insights" class="flex-1 flex flex-col overflow-hidden hidden">
+  <div class="absolute inset-0 grain-overlay pointer-events-none z-0"></div>
+  <section class="relative z-10 px-10 pt-8 pb-4 flex-shrink-0 bg-surface-dim border-b border-outline-variant/10">
+    <div class="max-w-6xl mx-auto flex items-end justify-between">
+      <div>
+        <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-2">COSMIC Intelligence Layer</p>
+        <h1 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Acquisition Targets</h1>
+        <p class="text-sm text-on-surface-variant/60 mt-1">Top opportunities ranked by AURORA score · $500K+ with land value</p>
+      </div>
+      <div class="flex gap-2 pb-1">
+        <span class="county-ins px-3 py-2 bg-surface-container rounded-lg font-label text-[10px] uppercase tracking-widest text-on-surface/40 cursor-pointer" data-c="Travis" onclick="setInsCounty('Travis')">Travis TX</span>
+        <span class="county-ins px-3 py-2 bg-surface-container-high rounded-lg font-label text-[10px] uppercase tracking-widest text-primary cursor-pointer" data-c="Harris" onclick="setInsCounty('Harris')">Harris TX</span>
+        <span class="county-ins px-3 py-2 bg-surface-container rounded-lg font-label text-[10px] uppercase tracking-widest text-on-surface/40 cursor-pointer" data-c="Suffolk" onclick="setInsCounty('Suffolk')">Boston MA</span>
+      </div>
+    </div>
+  </section>
+  <section class="flex-1 overflow-y-auto px-10 py-8 relative z-10 custom-scrollbar bg-surface-dim" id="ins-grid">
+    <div class="max-w-6xl mx-auto text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">Loading COSMIC pipeline...</div>
+  </section>
+</div>
+
+<!-- ══════════ VIEW: EXECUTIVE OVERVIEW ══════════ -->
+<div id="view-overview" class="flex-1 flex flex-col overflow-hidden hidden bg-surface-dim relative">
+  <div class="absolute inset-0 grain-overlay pointer-events-none z-0"></div>
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(50,145,255,0.06)_0%,transparent_60%)] pointer-events-none z-0"></div>
+  <section class="relative z-10 px-10 pt-8 pb-4 flex-shrink-0">
+    <div class="max-w-6xl mx-auto">
+      <div class="flex items-end justify-between mb-6">
+        <div>
+          <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-2">Command Center</p>
+          <h1 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Executive Overview</h1>
+          <p class="text-sm text-on-surface-variant/60 mt-1">Real-time intelligence across 2.2M+ properties · COSMIC pipeline active</p>
+        </div>
+        <div class="flex items-center gap-2 bg-surface-container px-4 py-2 rounded-full border border-secondary/20">
+          <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span></span>
+          <span class="font-label text-[10px] font-bold tracking-widest text-secondary uppercase">LIVE DATA</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4 mb-6" id="overview-county-cards">
+        <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10 animate-pulse"><div class="h-4 bg-surface-container-highest rounded w-1/2 mb-3"></div><div class="h-8 bg-surface-container-highest rounded w-3/4"></div></div>
+        <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10 animate-pulse"><div class="h-4 bg-surface-container-highest rounded w-1/2 mb-3"></div><div class="h-8 bg-surface-container-highest rounded w-3/4"></div></div>
+        <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10 animate-pulse"><div class="h-4 bg-surface-container-highest rounded w-1/2 mb-3"></div><div class="h-8 bg-surface-container-highest rounded w-3/4"></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="flex-1 overflow-y-auto px-10 pb-10 relative z-10 custom-scrollbar">
+    <div class="max-w-6xl mx-auto space-y-6">
+      <div class="grid grid-cols-3 gap-4" id="overview-signal-row">
+        <div class="bg-surface-container rounded-xl p-5 border border-secondary/20 animate-pulse"><div class="h-16 bg-surface-container-highest rounded"></div></div>
+        <div class="bg-surface-container rounded-xl p-5 border border-primary/20 animate-pulse"><div class="h-16 bg-surface-container-highest rounded"></div></div>
+        <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10 animate-pulse"><div class="h-16 bg-surface-container-highest rounded"></div></div>
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-headline text-lg font-bold text-on-surface">Top Acquisition Targets</h2>
+          <button onclick="showDealFinder()" class="font-label text-[10px] uppercase tracking-widest text-primary hover:text-primary/80 pg-transition flex items-center gap-1">View All <span class="material-symbols-outlined text-sm">arrow_forward</span></button>
+        </div>
+        <div id="overview-targets" class="space-y-2">
+          <div class="bg-surface-container rounded-xl p-4 border border-outline-variant/10 animate-pulse"><div class="h-12 bg-surface-container-highest rounded"></div></div>
+          <div class="bg-surface-container rounded-xl p-4 border border-outline-variant/10 animate-pulse"><div class="h-12 bg-surface-container-highest rounded"></div></div>
+          <div class="bg-surface-container rounded-xl p-4 border border-outline-variant/10 animate-pulse"><div class="h-12 bg-surface-container-highest rounded"></div></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <button onclick="showView('market')" class="flex items-center gap-4 bg-surface-container p-5 rounded-xl border border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-high pg-transition group text-left">
+          <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-primary">map</span></div>
+          <div><p class="font-headline text-sm font-bold text-on-surface">Map Explorer</p><p class="text-[11px] text-on-surface-variant/50">Geographic heatmap + ownership clusters</p></div>
+          <span class="material-symbols-outlined text-outline/30 ml-auto group-hover:text-primary pg-transition">arrow_forward</span>
+        </button>
+        <button onclick="showView('insights')" class="flex items-center gap-4 bg-surface-container p-5 rounded-xl border border-outline-variant/10 hover:border-secondary/30 hover:bg-surface-container-high pg-transition group text-left">
+          <div class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-secondary">rocket_launch</span></div>
+          <div><p class="font-headline text-sm font-bold text-on-surface">COSMIC Insights</p><p class="text-[11px] text-on-surface-variant/50">Ranked acquisition targets by AURORA score</p></div>
+          <span class="material-symbols-outlined text-outline/30 ml-auto group-hover:text-secondary pg-transition">arrow_forward</span>
+        </button>
+        <button onclick="showView('summary')" class="flex items-center gap-4 bg-surface-container p-5 rounded-xl border border-outline-variant/10 hover:border-tertiary/30 hover:bg-surface-container-high pg-transition group text-left">
+          <div class="w-10 h-10 bg-tertiary/10 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-tertiary">bar_chart</span></div>
+          <div><p class="font-headline text-sm font-bold text-on-surface">Market Summary</p><p class="text-[11px] text-on-surface-variant/50">County-level breakdown and ownership stats</p></div>
+          <span class="material-symbols-outlined text-outline/30 ml-auto group-hover:text-tertiary pg-transition">arrow_forward</span>
+        </button>
+        <button onclick="showView('watchlist')" class="flex items-center gap-4 bg-surface-container p-5 rounded-xl border border-outline-variant/10 hover:border-primary/30 hover:bg-surface-container-high pg-transition group text-left">
+          <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-primary">bookmark</span></div>
+          <div><p class="font-headline text-sm font-bold text-on-surface">My Watchlist</p><p class="text-[11px] text-on-surface-variant/50">Saved properties and portfolio tracking</p></div>
+          <span class="material-symbols-outlined text-outline/30 ml-auto group-hover:text-primary pg-transition">arrow_forward</span>
+        </button>
+      </div>
+      <p class="text-[10px] text-outline/30 text-center font-label uppercase tracking-widest">PropertyGraph · COSMIC Intelligence Pipeline · JourdanLabs</p>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════ VIEW: MARKET SUMMARY ══════════ -->
+<div id="view-summary" class="flex-1 flex flex-col overflow-hidden hidden bg-surface-dim relative">
+  <div class="absolute inset-0 grain-overlay pointer-events-none z-0"></div>
+  <section class="relative z-10 px-10 pt-8 pb-4 flex-shrink-0 border-b border-outline-variant/10">
+    <div class="max-w-6xl mx-auto">
+      <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-2">County Intelligence</p>
+      <h1 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Market Summary</h1>
+      <p class="text-sm text-on-surface-variant/60 mt-1">Real property data by county — appraisal totals, ownership patterns, market composition</p>
+    </div>
+  </section>
+  <section class="flex-1 overflow-y-auto px-10 py-8 relative z-10 custom-scrollbar" id="summary-grid">
+    <div class="max-w-6xl mx-auto text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">Loading market data...</div>
+  </section>
+</div>
+
+<!-- ══════════ VIEW: WATCHLIST ══════════ -->
+<div id="view-watchlist" class="flex-1 flex flex-col overflow-hidden hidden bg-surface-dim relative">
+  <div class="absolute inset-0 grain-overlay pointer-events-none z-0"></div>
+  <section class="relative z-10 px-10 pt-8 pb-4 flex-shrink-0 border-b border-outline-variant/10">
+    <div class="max-w-5xl mx-auto flex items-end justify-between">
+      <div>
+        <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-2">Portfolio Tracking</p>
+        <h1 class="font-headline text-4xl font-extrabold tracking-tight text-on-surface">My Watchlist</h1>
+        <p class="text-sm text-on-surface-variant/60 mt-1">Saved properties across all markets · COSMIC scores · AURORA composite</p>
+      </div>
+      <button onclick="clearWatchlist()" class="px-4 py-2 rounded-lg border border-outline-variant/20 text-outline/50 hover:text-on-surface hover:border-outline/40 font-label text-[10px] uppercase tracking-widest pg-transition">Clear All</button>
+    </div>
+  </section>
+  <section class="flex-1 overflow-y-auto px-10 py-8 relative z-10 custom-scrollbar" id="watchlist-grid">
+    <div class="max-w-5xl mx-auto text-center text-outline/30 font-label uppercase tracking-widest text-xs py-4">Loading...</div>
+  </section>
+</div>
+
+<!-- OWNER DETAIL MODAL -->
+<div id="ownerDetailModal" class="fixed inset-0 z-[950] flex items-center justify-center hidden">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeOwnerModal()"></div>
+  <div class="relative glass-panel border border-outline-variant/20 rounded-xl w-[640px] max-w-[95vw] max-h-[85vh] flex flex-col z-10 shadow-2xl">
+    <div class="flex justify-between items-start p-6 pb-4 border-b border-outline-variant/10 flex-shrink-0">
+      <div>
+        <p class="font-label text-[10px] uppercase tracking-widest text-primary mb-1">Entity Intelligence</p>
+        <h2 class="font-headline text-xl font-black text-on-surface" id="owner-modal-name">Loading...</h2>
+        <p class="text-[11px] text-outline/50 mt-0.5" id="owner-modal-county"></p>
+      </div>
+      <button onclick="closeOwnerModal()" class="text-outline/40 hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="overflow-y-auto custom-scrollbar flex-1" id="owner-modal-body">
+      <div class="p-6 text-center text-outline/30 font-label uppercase tracking-widest text-xs">Loading entity data...</div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORTS MODAL -->
+<div id="reportsModal" class="fixed inset-0 z-[950] flex items-center justify-center hidden">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeReportsModal()"></div>
+  <div class="relative glass-panel border border-outline-variant/20 rounded-xl w-[600px] max-w-[95vw] max-h-[85vh] flex flex-col z-10 shadow-2xl">
+    <div class="flex justify-between items-start p-6 pb-4 border-b border-outline-variant/10 flex-shrink-0">
+      <div>
+        <p class="font-label text-[10px] uppercase tracking-widest text-primary mb-1">Market Intelligence Report</p>
+        <h2 class="font-headline text-xl font-black text-on-surface">Market Report</h2>
+      </div>
+      <button onclick="closeReportsModal()" class="text-outline/40 hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="overflow-y-auto custom-scrollbar flex-1 p-6" id="reports-modal-body">
+      <div class="text-center text-outline/30 font-label uppercase tracking-widest text-xs">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- RISK MATRIX MODAL -->
+<div id="riskMatrixModal" class="fixed inset-0 z-[950] flex items-center justify-center hidden">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeRiskModal()"></div>
+  <div class="relative glass-panel border border-outline-variant/20 rounded-xl w-[600px] max-w-[95vw] max-h-[85vh] flex flex-col z-10 shadow-2xl">
+    <div class="flex justify-between items-start p-6 pb-4 border-b border-outline-variant/10 flex-shrink-0">
+      <div>
+        <p class="font-label text-[10px] uppercase tracking-widest text-tertiary mb-1">AURORA Risk Analysis</p>
+        <h2 class="font-headline text-xl font-black text-on-surface">Risk Matrix</h2>
+      </div>
+      <button onclick="closeRiskModal()" class="text-outline/40 hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="overflow-y-auto custom-scrollbar flex-1 p-6" id="risk-modal-body">
+      <div class="text-center text-outline/30 font-label uppercase tracking-widest text-xs">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB = '/api/propertygraph';
+const H = {};
+
+let mktCounty = 'Harris', mktMode = 'investor', invCounty = 'Harris', insCounty = 'Harris';
+let mktCache = {}, invTimer = null, mktTimer = null;
+
+const COUNTY_CENTER = { Travis:[30.2672,-97.7431], Harris:[29.7604,-95.3698], Suffolk:[42.3601,-71.0589] };
+const DARK_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+/* ─── LEAFLET MAP (Market Intelligence) ─── */
+let mktMap, mktMarker, mktTileLayer;
+function initMktMap() {
+  if (mktMap) return; // already initialized
+  const c = COUNTY_CENTER[mktCounty];
+  const container = document.getElementById('leaflet-map');
+  // Ensure container has explicit dimensions before Leaflet touches it
+  container.style.width = '100%';
+  container.style.height = '100%';
+  container.style.minHeight = '400px';
+  mktMap = L.map('leaflet-map', { zoomControl:false, attributionControl:false }).setView(c, 12);
+  mktTileLayer = L.tileLayer(DARK_TILES, { maxZoom:19 }).addTo(mktMap);
+  L.control.zoom({ position:'bottomright' }).addTo(mktMap);
+  // Watch for size changes (e.g. panel becoming visible) and invalidate
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => { if(mktMap) mktMap.invalidateSize(); });
+    ro.observe(container);
+  }
+}
+function panMktMap() {
+  if(!mktMap) return;
+  mktMap.setView(COUNTY_CENTER[mktCounty], 12);
+}
+function dropMktMarker(p) {
+  if(!mktMap) return;
+  if(mktMarker) mktMap.removeLayer(mktMarker);
+  let lat = +p.lat || 0;
+  let lng = +p.lng || 0;
+  const c = COUNTY_CENTER[p.county] || COUNTY_CENTER[mktCounty];
+  // Jitter fallback if no real coords
+  if(!lat || !lng) {
+    lat = c[0] + (Math.random()-0.5)*0.08;
+    lng = c[1] + (Math.random()-0.5)*0.08;
+  }
+  const s = cosmicScore(p);
+  const color = s.verdict==='BUY' ? '#4edea3' : s.verdict==='HOLD' ? '#a7c8ff' : '#ffb95f';
+  mktMarker = L.circleMarker([lat,lng], {radius:10, color, fillColor:color, fillOpacity:0.9, weight:2}).addTo(mktMap);
+  mktMarker.bindPopup(`<div style="color:#131314"><b>${(p.address||'Asset').substring(0,35)}</b><br/><span style="color:${color};font-weight:bold">${s.verdict} · ${s.score}/100</span></div>`).openPopup();
+  mktMap.setView([lat,lng], 13);
+}
+
+/* ─── BOTTOM TAB: FEED / HEATMAP / OWNERSHIP ─── */
+let mktHeatLayer = null, mktOwnerMarkers = [], mktTabActive = 'heatmap';
+
+function setMapTab(tab) {
+  // NOTE: do NOT call showView('market') here — it re-triggers map init and kills the map
+  mktTabActive = tab;
+  // Update button styling
+  ['feed','heatmap','ownership'].forEach(t => {
+    const btn = document.getElementById('tab-' + t);
+    if (!btn) return;
+    if (t === tab) {
+      btn.className = 'px-6 py-2 rounded-full bg-primary text-on-primary font-label text-[10px] font-bold uppercase tracking-widest';
+    } else {
+      btn.className = 'px-6 py-2 rounded-full text-on-surface/50 font-label text-[10px] font-bold uppercase tracking-widest';
+    }
+  });
+  // Force Leaflet to recalculate size after any visibility change
+  if (mktMap) setTimeout(() => mktMap.invalidateSize(), 50);
+  // Clear previous overlays
+  clearMapOverlays();
+  // Execute mode
+  if (tab === 'heatmap') loadMapHeatmap();
+  else if (tab === 'ownership') loadMapOwnership();
+  else loadMapFeed();
+}
+
+function clearMapOverlays() {
+  if (mktHeatLayer) { mktMap.removeLayer(mktHeatLayer); mktHeatLayer = null; }
+  mktOwnerMarkers.forEach(m => mktMap.removeLayer(m));
+  mktOwnerMarkers = [];
+}
+
+function updateMapStatus(text) {
+  let pill = document.getElementById('map-status-pill');
+  if (!text) { if (pill) pill.remove(); return; }
+  if (!pill) {
+    pill = document.createElement('div');
+    pill.id = 'map-status-pill';
+    pill.className = 'absolute top-4 right-4 z-30 px-4 py-1.5 rounded-full glass-panel border border-outline-variant/20 font-label text-[10px] font-bold uppercase tracking-widest text-on-surface/80';
+    const mapContainer = document.getElementById('leaflet-map').parentElement;
+    mapContainer.style.position = 'relative';
+    mapContainer.appendChild(pill);
+  }
+  pill.textContent = text;
+}
+
+async function loadMapHeatmap() {
+  updateMapStatus('HEATMAP · loading...');
+  const c = COUNTY_CENTER[mktCounty];
+  const url = `${SB}/properties?county=eq.${mktCounty}&total_appraised_value=gt.0&limit=1000&select=lat,lng,total_appraised_value`;
+  const data = await query(url);
+  if (!data || mktTabActive !== 'heatmap') return;
+  if (!data.length) { updateMapStatus('HEATMAP · no data'); return; }
+  const maxVal = Math.max(...data.map(p => +p.total_appraised_value || 0), 1);
+  const pts = data.map(p => {
+    const lat = (p.lat && +p.lat) ? +p.lat : c[0] + (Math.random()-0.5)*0.12;
+    const lng = (p.lng && +p.lng) ? +p.lng : c[1] + (Math.random()-0.5)*0.12;
+    return [lat, lng, (+p.total_appraised_value || 0) / maxVal];
+  });
+  mktHeatLayer = L.heatLayer(pts, {
+    radius: 25, blur: 20, maxZoom: 15,
+    gradient: { 0.3: '#3291ff', 0.7: '#4edea3', 1.0: '#4edea3' }
+  }).addTo(mktMap);
+  updateMapStatus(`HEATMAP · ${pts.length} properties`);
+}
+
+async function loadMapOwnership() {
+  updateMapStatus('OWNERSHIP · loading...');
+  const c = COUNTY_CENTER[mktCounty];
+  const url = `${SB}/properties?county=eq.${mktCounty}&total_appraised_value=gt.500000&limit=500&select=id,address,city,county,lat,lng,total_appraised_value,land_value,improvement_value,owner_name,property_use,raw_data`;
+  const data = await query(url);
+  if (!data || mktTabActive !== 'ownership') return;
+  if (!data.length) { updateMapStatus('OWNERSHIP · no data'); return; }
+  // Normalize owner from raw_data
+  data.forEach(p => { if(!p.owner_name && p.raw_data) p.owner_name = (p.raw_data.OWNER||p.raw_data.owner||'').trim()||null; });
+  const maxVal = Math.max(...data.map(p => +p.total_appraised_value || 0), 1);
+  data.forEach(p => {
+    const lat = (p.lat && +p.lat) ? +p.lat : c[0] + (Math.random()-0.5)*0.14;
+    const lng = (p.lng && +p.lng) ? +p.lng : c[1] + (Math.random()-0.5)*0.14;
+    const s = cosmicScore(p);
+    const inv = isInv(p.owner_name);
+    const color = s.score >= 72 ? '#4edea3' : s.score >= 55 ? '#a7c8ff' : '#ffb95f';
+    const radius = inv ? 8 + ((+p.total_appraised_value||0)/maxVal)*10 : 4;
+    const marker = L.circleMarker([lat, lng], {
+      radius, color, fillColor: color, fillOpacity: inv ? 0.85 : 0.4, weight: inv ? 2 : 1
+    }).addTo(mktMap);
+    marker.bindPopup(`<div style="color:#131314"><b>${(p.address||'—').substring(0,35)}</b><br/><span style="font-size:11px">${p.owner_name||'Individual Owner'}</span><br/><span style="font-size:11px;font-weight:bold;color:${color}">${s.verdict} · ${s.score}/100</span></div>`);
+    mktOwnerMarkers.push(marker);
+  });
+  updateMapStatus(`OWNERSHIP · ${data.length} properties · ${data.filter(p=>isInv(p.owner_name)).length} investor-owned`);
+}
+
+async function loadMapFeed() {
+  updateMapStatus('MARKET FEED · loading...');
+  const c = COUNTY_CENTER[mktCounty];
+  const url = `${SB}/properties?county=eq.${mktCounty}&total_appraised_value=gt.200000&limit=200&select=id,address,lat,lng,total_appraised_value,land_value,improvement_value,owner_name`;
+  const data = await query(url);
+  if(!data || mktTabActive !== 'feed') return;
+  const maxVal = Math.max(...data.map(p=>+p.total_appraised_value||0),1);
+  data.forEach(p=>{
+    const lat=(p.lat&&+p.lat)?+p.lat:c[0]+(Math.random()-0.5)*0.14;
+    const lng=(p.lng&&+p.lng)?+p.lng:c[1]+(Math.random()-0.5)*0.14;
+    const s=cosmicScore(p);
+    const color=s.score>=72?'#4edea3':s.score>=55?'#a7c8ff':'#ffb95f';
+    const m=L.circleMarker([lat,lng],{radius:5,color,fillColor:color,fillOpacity:0.6,weight:1}).addTo(mktMap);
+    m.bindPopup(`<div style="color:#131314"><b>${(p.address||'—').substring(0,35)}</b><br/><span style="color:${color};font-weight:bold">${s.verdict} · ${s.score}/100</span></div>`);
+    mktOwnerMarkers.push(m);
+  });
+  updateMapStatus(`MARKET FEED · ${data.length} properties`);
+}
+
+/* ─── HEATMAP (COSMIC Insights) ─── */
+let insMap, insHeat;
+function renderInsHeatmap(scored) {
+  if(insMap) { insMap.remove(); insMap=null; }
+  // Append heatmap container into ins-grid after the main content
+  const container = document.querySelector('#ins-grid > div');
+  if(!container) return;
+  let wrap = document.getElementById('ins-map-wrap');
+  if(wrap) wrap.remove();
+  wrap = document.createElement('div');
+  wrap.id = 'ins-map-wrap';
+  wrap.className = 'mt-6';
+  wrap.innerHTML = `<p class="font-label text-[10px] uppercase tracking-widest text-outline mb-2">COSMIC Heatmap · Acquisition Density</p><div id="ins-map" class="w-full h-64 rounded-xl overflow-hidden border border-outline-variant/10"></div>`;
+  container.appendChild(wrap);
+  setTimeout(() => {
+    const c = COUNTY_CENTER[insCounty];
+    insMap = L.map('ins-map', { zoomControl:false, attributionControl:false }).setView(c, 12);
+    L.tileLayer(DARK_TILES, { maxZoom:19 }).addTo(insMap);
+    const pts = scored.map(p => {
+      const jLat = c[0] + (Math.random()-0.5)*0.04;
+      const jLng = c[1] + (Math.random()-0.5)*0.04;
+      const intensity = p._s.verdict==='BUY' ? 0.9 : 0.5;
+      return [jLat, jLng, intensity];
+    });
+    insHeat = L.heatLayer(pts, { radius:25, blur:20, maxZoom:15, gradient:{0.3:'#3291ff',0.6:'#4edea3',1:'#4edea3'} }).addTo(insMap);
+  }, 100);
+}
+
+/* ─── COSMIC ANALYSIS MODAL ─── */
+async function showDealFinder() {
+  const county = mktCounty || 'Harris';
+  const existing = document.getElementById('deal-finder-modal');
+  if(existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'deal-finder-modal';
+  modal.className = 'fixed inset-0 z-[900] flex items-center justify-center p-4';
+  modal.innerHTML = `
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="document.getElementById('deal-finder-modal').remove()"></div>
+    <div class="relative glass-panel border border-outline-variant/20 rounded-xl shadow-2xl z-10 w-full max-w-3xl max-h-[90vh] flex flex-col">
+      <div class="p-6 border-b border-outline-variant/10 flex items-center justify-between flex-shrink-0">
+        <div>
+          <p class="font-label text-[10px] uppercase tracking-widest text-primary mb-1">COSMIC Deal Finder</p>
+          <h2 class="font-headline text-xl font-black text-on-surface">Top Acquisition Targets</h2>
+          <p class="text-sm text-on-surface/50">${county} County · ranked by AURORA score</p>
+        </div>
+        <button onclick="document.getElementById('deal-finder-modal').remove()" class="text-outline/40 hover:text-on-surface p-1"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div id="deal-finder-results" class="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div class="text-center py-16 text-outline/30 font-label uppercase tracking-widest text-xs">Running COSMIC pipeline...</div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const data = await query(`${SB}/properties?county=eq.${county}&total_appraised_value=gt.500000&land_value=gt.0&limit=100&select=id,address,city,county,lat,lng,total_appraised_value,land_value,improvement_value,owner_name,property_use,year_built,raw_data`);
+  const el = document.getElementById('deal-finder-results');
+  if(!el) return;
+  if(!data){ el.innerHTML='<div class="text-center py-10 text-tertiary/50 font-label uppercase text-xs">Query timeout — retry in 30s</div>'; return; }
+  data.forEach(p=>{ if(!p.owner_name&&p.raw_data) p.owner_name=(p.raw_data.OWNER||p.raw_data.owner||'').trim()||null; });
+  const scored = data.map(p=>({...p,_s:cosmicScore(p)})).sort((a,b)=>b._s.score-a._s.score);
+
+  // Highlight top 10 on map
+  if(mktMap) {
+    clearMapOverlays();
+    scored.slice(0,10).forEach((p,i)=>{
+      const c=COUNTY_CENTER[p.county]||COUNTY_CENTER[county];
+      const lat=(p.lat&&+p.lat)?+p.lat:c[0]+(Math.random()-0.5)*0.1;
+      const lng=(p.lng&&+p.lng)?+p.lng:c[1]+(Math.random()-0.5)*0.1;
+      const color=p._s.verdict==='BUY'?'#4edea3':'#a7c8ff';
+      const m=L.circleMarker([lat,lng],{radius:i<3?14:10,color,fillColor:color,fillOpacity:0.9,weight:2}).addTo(mktMap);
+      m.bindPopup(`<div style="color:#131314"><b>#${i+1} ${(p.address||'').substring(0,30)}</b><br/><b style="color:${color}">AURORA ${p._s.score} · ${p._s.verdict}</b></div>`);
+      mktOwnerMarkers.push(m);
+    });
+  }
+
+  el.innerHTML = `<div class="space-y-2">${scored.map((p,i)=>{
+    const s=p._s; const vc=s.verdict==='BUY'?'text-secondary border-secondary/20 bg-secondary/10':s.verdict==='HOLD'?'text-primary border-primary/20 bg-primary/10':'text-outline border-outline/20 bg-outline/10';
+    const reason=dealReason(p,s);
+    const topBadge=i<3?`<span class="font-label text-[8px] uppercase tracking-widest text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded ml-1">#${i+1} TOP PICK</span>`:'';
+    return `<div class="flex items-center gap-4 bg-surface-container/50 hover:bg-surface-container rounded-lg p-4 cursor-pointer pg-transition group" onclick="showCosmicModal(${JSON.stringify(p).replace(/"/g,'&quot;')});document.getElementById('deal-finder-modal').remove()">
+      <div class="relative w-12 h-12 flex-shrink-0">
+        <svg class="w-full h-full -rotate-90"><circle class="text-outline-variant/20" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-width="3"></circle><circle class="${s.verdict==='BUY'?'text-secondary':s.verdict==='HOLD'?'text-primary':'text-outline'}" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-dasharray="125.6" stroke-dashoffset="${125.6*(1-s.score/100)}" stroke-width="3"></circle></svg>
+        <span class="absolute inset-0 flex items-center justify-center font-label font-bold text-[11px]">${s.score}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-1"><p class="text-sm font-bold text-on-surface truncate group-hover:text-primary pg-transition">${p.address||'—'}</p>${topBadge}</div>
+        <p class="text-[10px] text-on-surface/40 mt-0.5">${p.city||''} · ${reason}</p>
+      </div>
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="text-right">
+          <p class="text-[9px] text-outline/40 font-label uppercase">Value</p>
+          <p class="text-sm font-bold text-primary">${fmtVal(p.total_appraised_value)}</p>
+        </div>
+        <span class="px-2 py-1 rounded text-[9px] font-label font-bold uppercase border ${vc}">${s.verdict}</span>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function engineLabel(v) {
+  if(v>=0.75) return 'very strong';
+  if(v>=0.65) return 'strong';
+  if(v>=0.50) return 'moderate';
+  return 'weak';
+}
+function engineInterp(name, v, p) {
+  const l = engineLabel(v);
+  if(name==='METEOR') return v>=0.65?'favorable acquisition terrain — ownership disruption signal detected':'limited acquisition trigger — low disruption in current ownership layer';
+  if(name==='NOVA') return v>=0.65?'strong causal support — environmental and market conditions favor acquisition':'weak causal frame — surrounding conditions don\'t strongly support action';
+  if(name==='ECLIPSE') return v>=0.65?'timing signal is favorable — momentum indicators point toward near-term action':'low timing urgency — no near-term catalyst detected';
+  if(name==='PULSAR') return v>=0.65?'resilient asset profile — low adversarial risk, holds value under stress':'stress-test shows vulnerability — higher risk under adverse conditions';
+  return l;
+}
+function dealReason(p, s) {
+  const reasons = [];
+  if(s.met>0.65) reasons.push('strong acquisition signal');
+  if(isInv(p.owner_name)) reasons.push('investor-owned asset');
+  const lr = (+p.land_value||0)/(+p.total_appraised_value||1);
+  if(lr>0.4) reasons.push('high land value ratio');
+  if(s.score>=72) reasons.push('above-average acquisition grade');
+  if(+p.total_appraised_value>1000000) reasons.push('high-value asset');
+  return reasons.slice(0,2).join(' · ') || 'acquisition candidate';
+}
+
+async function showCosmicModal(p) {
+  const s = cosmicScore(p);
+  const existing = document.getElementById('cosmic-modal');
+  if(existing) existing.remove();
+
+  // Rank in county cache
+  const cached = Object.values(mktCache);
+  const allScores = cached.map(x=>cosmicScore(x).score).sort((a,b)=>b-a);
+  const rank = allScores.filter(x=>x>s.score).length;
+  const pct = cached.length>1 ? Math.round((1-rank/cached.length)*100) : null;
+  const rankStr = pct!==null ? `Top ${100-pct}% in ${p.county||'this market'} by AURORA score` : 'Score computed against COSMIC pipeline';
+
+  // Signals
+  const lr = (+p.land_value||0)/(+p.total_appraised_value||1);
+  const inv = isInv(p.owner_name);
+  const pos=[], neg=[];
+  if(s.met>0.65) pos.push('strong terrain acquisition signal'); else neg.push('weak acquisition trigger signal');
+  if(s.nov>0.65) pos.push('favorable causal / environmental conditions'); else neg.push('limited causal support from surrounding market');
+  if(s.ecl>0.65) pos.push('timing momentum is favorable'); else neg.push('no near-term timing catalyst detected');
+  if(s.pul>0.65) pos.push('resilient asset — holds value under stress'); else neg.push('some adversarial risk under stress scenarios');
+  if(inv) pos.push('investor-owned — targetable entity'); else neg.push('individual ownership — lower institutional disruption');
+  if(lr>0.4) pos.push('high land value ratio — strong underlying land play');
+  if(+p.total_appraised_value>500000) pos.push('above-threshold appraisal value');
+
+  // Recommendation
+  let recAction, recReason;
+  if(s.aur>=0.72){ recAction='BUY NOW'; recReason='Strong composite AURORA signal with favorable acquisition conditions. Asset warrants priority pursuit and near-term due diligence.'; }
+  else if(s.aur>=0.60){ recAction='WATCH CLOSELY'; recReason='Above-average signal but not yet at peak acquisition grade. Monitor for ownership changes or valuation shifts that would strengthen the case.'; }
+  else if(s.aur>=0.50){ recAction='HOLD / MONITOR'; recReason='Moderate COSMIC signal — underlying asset quality is present but acquisition triggers are not yet strong enough to justify priority pursuit.'; }
+  else { recAction='PASS'; recReason='Below acquisition threshold across multiple COSMIC engines. Better opportunities likely exist in the same market.'; }
+
+  // Trigger conditions
+  const buyIf=[], passIf=[];
+  if(s.met<0.65) buyIf.push('ownership disruption or change detected'); else passIf.push('ownership cluster weakens');
+  if(s.ecl<0.65) buyIf.push('near-term market catalyst or transaction activity emerges'); else passIf.push('timing momentum deteriorates');
+  buyIf.push('signal confidence increases above AURORA 72 threshold');
+  passIf.push('valuation rises materially above current appraised value');
+
+  // Action colors
+  const recColor = recAction==='BUY NOW'?'text-secondary border-secondary/30 bg-secondary/10':recAction==='WATCH CLOSELY'?'text-tertiary border-tertiary/30 bg-tertiary/10':recAction==='HOLD / MONITOR'?'text-primary border-primary/30 bg-primary/10':'text-outline border-outline/30 bg-outline/10';
+  const verdictColor = s.verdict==='BUY'?'bg-secondary/10 text-secondary border-secondary/20':s.verdict==='HOLD'?'bg-primary/10 text-primary border-primary/20':'bg-outline/10 text-outline border-outline/20';
+
+  const modal = document.createElement('div');
+  modal.id = 'cosmic-modal';
+  modal.className = 'fixed inset-0 z-[900] flex items-center justify-center p-4';
+  modal.innerHTML = `
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="document.getElementById('cosmic-modal').remove()"></div>
+    <div class="relative glass-panel border border-outline-variant/20 rounded-xl shadow-2xl z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <!-- HEADER -->
+      <div class="sticky top-0 glass-panel border-b border-outline-variant/10 p-6 flex items-start justify-between z-10">
+        <div class="flex-1 mr-4">
+          <p class="font-label text-[10px] uppercase tracking-widest text-primary mb-1">Full COSMIC Decision Analysis</p>
+          <h2 class="font-headline text-xl font-black text-on-surface leading-tight">${p.address||'Unknown Asset'}</h2>
+          <p class="text-sm text-on-surface/50 mt-0.5">${p.city||''} · ${p.county||''} · ${p.property_use||'Property'}</p>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <span class="px-3 py-1.5 rounded-full text-xs font-label font-bold uppercase tracking-wider border ${verdictColor}">${s.verdict}</span>
+          <div class="text-right">
+            <p class="font-headline text-2xl font-black text-primary">${s.score}</p>
+            <p class="text-[9px] text-outline/50 font-label uppercase">AURORA</p>
+          </div>
+          <button onclick="document.getElementById('cosmic-modal').remove()" class="text-outline/40 hover:text-on-surface p-1"><span class="material-symbols-outlined">close</span></button>
+        </div>
+      </div>
+      <div class="p-6 space-y-6">
+        <!-- ASSET HEADER -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-surface-container p-3 rounded-lg border border-outline-variant/10">
+            <p class="text-[9px] font-label uppercase text-outline/50 mb-1">Appraised Value</p>
+            <p class="font-headline text-base font-bold text-primary">${fmtVal(p.total_appraised_value)}</p>
+          </div>
+          <div class="bg-surface-container p-3 rounded-lg border border-outline-variant/10">
+            <p class="text-[9px] font-label uppercase text-outline/50 mb-1">Land Value</p>
+            <p class="font-headline text-base font-bold text-on-surface">${fmtVal(p.land_value)}</p>
+          </div>
+          <div class="bg-surface-container p-3 rounded-lg border border-outline-variant/10">
+            <p class="text-[9px] font-label uppercase text-outline/50 mb-1">Owner</p>
+            <p class="font-headline text-sm font-bold text-on-surface truncate">${p.owner_name||'Individual / Unknown'}</p>
+          </div>
+        </div>
+
+        <!-- ENGINE BREAKDOWN -->
+        <div>
+          <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Engine Breakdown</p>
+          <div class="space-y-3">
+            ${[['METEOR',s.met,'#a7c8ff'],['NOVA',s.nov,'#3291ff'],['ECLIPSE',s.ecl,'#ffb95f'],['PULSAR',s.pul,'#4edea3']].map(([name,val,color])=>`
+            <div class="bg-surface-container/50 rounded-lg p-3">
+              <div class="flex items-center gap-3 mb-1.5">
+                <span class="font-label text-[10px] font-bold uppercase tracking-widest w-16" style="color:${color}">${name}</span>
+                <div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                  <div class="h-full rounded-full" style="width:${(val*100).toFixed(0)}%;background:${color}"></div>
+                </div>
+                <span class="font-label text-sm font-bold w-8 text-right" style="color:${color}">${(val*100).toFixed(0)}</span>
+                <span class="text-[9px] text-outline/50 w-20 text-right">${engineLabel(val)}</span>
+              </div>
+              <p class="text-[11px] text-on-surface/60 pl-20">${engineInterp(name,val,p)}</p>
+            </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- PRIMARY SIGNALS -->
+        <div>
+          <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Primary Signals</p>
+          <div class="bg-surface-container/50 rounded-lg p-4 space-y-1.5">
+            ${pos.map(x=>`<div class="flex items-start gap-2 text-[11px]"><span class="text-secondary font-bold mt-0.5">+</span><span class="text-on-surface/80">${x}</span></div>`).join('')}
+            ${neg.map(x=>`<div class="flex items-start gap-2 text-[11px]"><span class="text-tertiary font-bold mt-0.5">−</span><span class="text-on-surface/50">${x}</span></div>`).join('')}
+          </div>
+        </div>
+
+        <!-- RANK -->
+        <div class="bg-surface-container/50 rounded-lg p-4">
+          <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-2">Market Context</p>
+          <p class="text-sm text-on-surface/80">${rankStr}</p>
+          <p class="text-[11px] text-on-surface/50 mt-1">${s.aur>=0.65?'Above-average acquisition candidate for this market':'Better hold or monitor candidate than active buy target in current conditions'}</p>
+        </div>
+
+        <!-- RECOMMENDED ACTION -->
+        <div class="border border-outline-variant/20 rounded-lg p-4">
+          <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-2">Recommended Action</p>
+          <div class="flex items-center gap-3 mb-2">
+            <span class="px-4 py-2 rounded-lg text-sm font-label font-bold uppercase tracking-wider border ${recColor}">${recAction}</span>
+          </div>
+          <p class="text-[11px] text-on-surface/70">${recReason}</p>
+        </div>
+
+        <!-- TRIGGER CONDITIONS -->
+        <div>
+          <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">What Would Change This?</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-secondary/5 border border-secondary/15 rounded-lg p-3">
+              <p class="font-label text-[9px] uppercase tracking-widest text-secondary mb-2">Becomes BUY if:</p>
+              ${buyIf.map(x=>`<p class="text-[11px] text-on-surface/70 mb-1">· ${x}</p>`).join('')}
+            </div>
+            <div class="bg-tertiary/5 border border-tertiary/15 rounded-lg p-3">
+              <p class="font-label text-[9px] uppercase tracking-widest text-tertiary mb-2">Becomes PASS if:</p>
+              ${passIf.map(x=>`<p class="text-[11px] text-on-surface/70 mb-1">· ${x}</p>`).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- BETTER NEARBY OPTIONS -->
+        <div id="cosmic-nearby">
+          <p class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Better Opportunities Nearby</p>
+          <div class="text-[10px] text-outline/40 font-label uppercase py-4 text-center">Loading alternatives...</div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/10">
+          <button onclick="toggleWatchlistItem(${JSON.stringify(p).replace(/"/g,'&quot;')})" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/20 text-xs font-label font-bold uppercase tracking-widest text-on-surface/70 pg-transition">
+            <span class="material-symbols-outlined text-sm">star</span>Watchlist
+          </button>
+          <button onclick="document.getElementById('cosmic-modal').remove();showView('market');setTimeout(()=>dropMktMarker(${JSON.stringify(p).replace(/"/g,'&quot;')}),300)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/20 text-xs font-label font-bold uppercase tracking-widest text-on-surface/70 pg-transition">
+            <span class="material-symbols-outlined text-sm">map</span>View on Map
+          </button>
+          ${inv?`<button onclick="openOwnerModal(${JSON.stringify(p.owner_name).replace(/"/g,'&quot;')})" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/20 text-xs font-label font-bold uppercase tracking-widest text-on-surface/70 pg-transition"><span class="material-symbols-outlined text-sm">domain</span>Owner Detail</button>`:''}
+          <button onclick="document.getElementById('cosmic-modal').remove();showView('insights')" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 text-xs font-label font-bold uppercase tracking-widest text-primary pg-transition">
+            <span class="material-symbols-outlined text-sm">my_location</span>All Top Targets
+          </button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Load better nearby options async
+  query(`${SB}/properties?county=eq.${p.county||mktCounty}&total_appraised_value=gt.200000&land_value=gt.0&limit=100&select=id,address,city,county,total_appraised_value,land_value,improvement_value,owner_name,property_use,raw_data`).then(data=>{
+    if(!data) return;
+    data.forEach(x=>{ if(!x.owner_name&&x.raw_data) x.owner_name=(x.raw_data.OWNER||x.raw_data.owner||'').trim()||null; });
+    const scored = data.map(x=>({...x,_s:cosmicScore(x)})).filter(x=>x.id!==p.id).sort((a,b)=>b._s.score-a._s.score).slice(0,5);
+    const nb = document.getElementById('cosmic-nearby');
+    if(!nb) return;
+    if(!scored.length){ nb.innerHTML='<p class="font-label text-[10px] uppercase tracking-widest text-outline">No alternatives found in current dataset</p>'; return; }
+    nb.innerHTML=`<p class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Better Opportunities Nearby</p>
+    <div class="space-y-2">${scored.map((x,i)=>{
+      const xs=x._s; const xc=xs.verdict==='BUY'?'text-secondary':xs.verdict==='HOLD'?'text-primary':'text-outline';
+      const xreason=dealReason(x,xs);
+      return `<div class="flex items-center gap-3 bg-surface-container/50 hover:bg-surface-container rounded-lg p-3 cursor-pointer pg-transition group" onclick="document.getElementById('cosmic-modal').remove();showCosmicModal(${JSON.stringify(x).replace(/"/g,'&quot;')})">
+        <span class="font-headline text-lg font-black text-outline/30 w-5">${i+1}</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-bold text-on-surface truncate group-hover:text-primary pg-transition">${x.address||'—'}</p>
+          <p class="text-[10px] text-on-surface/40">${xreason}</p>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span class="font-label text-sm font-black ${xc}">${xs.score}</span>
+          <span class="px-2 py-0.5 rounded text-[9px] font-label font-bold uppercase ${xc} bg-current/10 border border-current/20">${xs.verdict}</span>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  });
+}
+
+function toggleWatchlistItem(p) {
+  const wl = getWatchlist();
+  const idx = wl.findIndex(x=>x.id===p.id);
+  if(idx>=0) wl.splice(idx,1); else wl.push(p);
+  saveWatchlist(wl);
+}
+
+/* ─── ROUTING ─── */
+function showView(v) {
+  ['overview','market','investor','insights','summary','watchlist'].forEach(k => {
+    const el = document.getElementById('view-' + k);
+    if(el) el.classList.toggle('hidden', k !== v);
+    document.getElementById('nav-' + k)?.classList.toggle('active', k === v);
+  });
+  if (v === 'market') {
+    // Give browser one frame to paint the view before touching Leaflet
+    setTimeout(() => {
+      if (!mktMap) {
+        initMktMap();
+        mktMap.invalidateSize();
+        loadMkt().then(() => {
+          setMapTab('heatmap');
+          setTimeout(() => { const f = document.querySelector('.pg-prop-item'); if(f) f.click(); }, 500);
+        });
+      } else {
+        mktMap.invalidateSize();
+        if (!document.getElementById('mkt-list').children.length) loadMkt();
+      }
+    }, 50);
+  }
+  if (v === 'investor') loadInv();
+  if (v === 'insights') loadIns();
+  if (v === 'overview') loadOverview();
+  if (v === 'summary') loadSummary();
+  if (v === 'watchlist') renderWatchlist();
+}
+
+/* ─── COSMIC SCORING ─── */
+function cosmicScore(p) {
+  const val=+p.total_appraised_value||0, land=+p.land_value||0, impr=+p.improvement_value||0;
+  const inv=/LLC|TRUST|CORP|INC|LP\b|LTD/i.test(p.owner_name||'');
+  const lr=val>0?land/val:0;
+  const met=Math.min(.95,.35+lr*.5+(val>500000?.08:0)+(inv?.05:0));
+  const nov=Math.min(.95,.40+(val>1000000?.30:val>250000?.20:.05)+(impr>0?.08:0));
+  const ecl=Math.min(.95,.45+(inv?.20:0)+(lr>.4?.15:0));
+  const pul=(val>0&&land>0)?.76:.42;
+  const aur=(met+nov+ecl+pul)/4;
+  const score=Math.round(aur*100);
+  const verdict=aur>=.72?'BUY':aur>=.55?'HOLD':'PASS';
+  const risk=aur>=.72?'Low':aur>=.55?'Medium':'High';
+  const label=score>=85?'ALPHA TARGET':score>=72?'STABLE ASSET':score>=55?'WATCH':' RECOVERY OPS';
+  const ringClass=score>=72?'score-ring-secondary':score>=55?'score-ring-primary':'score-ring-tertiary';
+  return {met,nov,ecl,pul,aur,score,verdict,risk,label,ringClass};
+}
+
+function fmtVal(v) {
+  if(!v||+v<=0)return '—';
+  const n=+v;
+  if(n>=1000000)return '$'+(n/1000000).toFixed(1)+'M';
+  if(n>=1000)return '$'+(n/1000).toFixed(0)+'K';
+  return '$'+n.toLocaleString();
+}
+
+function isInv(name) { return /LLC|TRUST|CORP|INC|LP\b|LTD/i.test(name||''); }
+
+const USE_LABELS = {
+  A1:'Single Family Residential', A2:'Single Family Residential', A3:'Single Family Residential',
+  B1:'Multifamily', B2:'Multifamily', B4:'Multifamily',
+  C1:'Vacant Land', C2:'Vacant Land', C3:'Commercial Land',
+  D1:'Agricultural', D2:'Agricultural',
+  E1:'Rural Land', E2:'Rural Land',
+  F1:'Commercial', F2:'Industrial / Commercial', F3:'Commercial',
+  G1:'Oil & Gas', G2:'Minerals',
+  J1:'Utility', J2:'Utility', J3:'Utility',
+  O1:'Residential Condo', O2:'Residential Condo',
+  X:'Exempt / Government',
+  '101':'Single Family Residential','102':'Multifamily','103':'Commercial',
+  '104':'Industrial','105':'Vacant Land','106':'Agricultural'
+};
+function fmtUse(code) { if(!code) return '—'; return USE_LABELS[code.trim()] || USE_LABELS[code.trim().toUpperCase()] || code; }
+
+async function query(url) {
+  try {
+    const res = await fetch(url, { headers: H, signal: AbortSignal.timeout(12000) });
+    const d = await res.json();
+    return Array.isArray(d) ? d : null;
+  } catch(e) { return null; }
+}
+
+/* ─── MARKET INTEL ─── */
+function setMktCounty(c) {
+  mktCounty = c;  document.querySelectorAll('.county-mkt').forEach(b=>{
+    const active=b.dataset.c===c;
+    b.className=`county-mkt text-[10px] font-bold py-2 rounded font-label uppercase ${active?'bg-surface-container-highest text-primary border border-primary/20':'bg-surface-container text-on-surface/60'}`;
+  });
+  panMktMap();
+  if(mktMarker){mktMap.removeLayer(mktMarker);mktMarker=null;}
+  loadMkt();
+}
+function setMktMode(m) {
+  mktMode=m;
+  document.querySelectorAll('.mkt-mode').forEach(b=>{
+    const active=b.dataset.m===m;
+    b.className=`mkt-mode px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-tight font-label ${active?'bg-surface-container-highest text-primary border border-primary/20':'bg-surface-container text-on-surface/80 border border-outline-variant/10'}`;
+  });
+  loadMkt();
+}
+async function loadMkt() {
+  const list=document.getElementById('mkt-list');
+  list.innerHTML='<div class="text-[10px] font-label uppercase tracking-widest text-outline/40 text-center py-4">Loading...</div>';
+  const q=document.getElementById('mkt-search').value.trim();
+  let url=`${SB}/properties?county=eq.${mktCounty}&limit=30&select=id,address,city,county,lat,lng,total_appraised_value,land_value,improvement_value,owner_name,property_use,year_built,cad_source,acct_number`;
+  if(mktMode==='search'&&q) url+=`&address=ilike.${encodeURIComponent(q.toUpperCase())}*`;
+  else if(mktMode==='search'&&!q) { list.innerHTML='<div class="text-[10px] font-label uppercase tracking-widest text-outline/40 text-center py-4">Type a street name to search</div>'; return; }
+  else if(mktMode==='investor') url+=`&total_appraised_value=gt.500000`;
+  else if(mktMode==='market') url+=`&total_appraised_value=gt.1000000`;
+  else if(mktMode==='insights') url+=`&total_appraised_value=gt.500000&land_value=gt.0`;
+  else url+=`&total_appraised_value=gt.500000`;
+  const data=await query(url);
+  if(!data){list.innerHTML='<div class="text-[10px] font-label uppercase text-tertiary/60 text-center py-4">Index building — retry in 30s</div>';return;}
+  // Normalize owner from raw_data if owner_name is null
+  data.forEach(p=>{ if(!p.owner_name && p.raw_data) { p.owner_name = (p.raw_data.OWNER||p.raw_data.owner||'').trim()||null; } });
+  let items=data;
+  if(mktMode==='investor') items=data.filter(p=>isInv(p.owner_name)); // May be short — fallback below
+  if(mktMode==='investor' && items.length===0) items=data; // Fallback: show all if no LLC hits
+  // Don't wipe cache — merge into it so pickMkt always finds data
+  items.forEach(p=>{ mktCache[p.id]=p; });
+  if(!items.length){list.innerHTML='<div class="text-[10px] font-label uppercase tracking-widest text-outline/40 text-center py-4">No results</div>';return;}
+  list.innerHTML=items.map(p=>{
+    const s=cosmicScore(p); const inv=isInv(p.owner_name);
+    return `<div class="pg-prop-item p-3 rounded-lg bg-surface-container/40 hover:bg-surface-container pg-transition cursor-pointer mb-1" data-id="${p.id}" onclick="pickMkt('${p.id}')">
+      <div class="flex justify-between items-start">
+        <p class="text-xs font-bold text-on-surface leading-tight flex-1 mr-2">${p.address||'—'}</p>
+        <span class="text-xs font-bold text-primary flex-shrink-0">${fmtVal(p.total_appraised_value)}</span>
+      </div>
+      <div class="flex items-center gap-2 mt-1">
+        <span class="font-label text-[9px] uppercase tracking-widest text-outline/60">${p.county}</span>
+        ${inv?'<span class="font-label text-[8px] uppercase tracking-wider text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded">INV</span>':''}
+        <span class="font-label text-[8px] uppercase tracking-wider ${s.score>=72?'text-secondary':'text-tertiary'} ml-auto">${s.label}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function pickMkt(id) {
+  document.querySelectorAll('.pg-prop-item').forEach(el=>{ el.classList.toggle('ring-1',el.dataset.id===id); el.classList.toggle('ring-primary',el.dataset.id===id); });
+  if(mktCache[id]) { dropMktMarker(mktCache[id]); renderMktDetail(mktCache[id]); return; }
+  // Not in cache yet — fetch it
+  query(`${SB}/properties?id=eq.${id}&limit=1&select=id,address,city,county,state,lat,lng,total_appraised_value,land_value,improvement_value,owner_name,property_use,year_built,cad_source,acct_number,raw_data`).then(data=>{
+    if(data&&data[0]){ const p=data[0]; if(!p.owner_name&&p.raw_data) p.owner_name=(p.raw_data.OWNER||p.raw_data.owner||'').trim()||null; mktCache[id]=p; dropMktMarker(p); renderMktDetail(p); }
+  });
+}
+function renderMktDetail(p) {
+  const s=cosmicScore(p); const inv=isInv(p.owner_name); const hi=(+p.total_appraised_value||0)>200000;
+  const ringOffset=251.2*(1-(s.score/100));
+  document.getElementById('mkt-detail').innerHTML=`
+    <div class="glass-panel p-6 rounded-xl border border-outline-variant/10 flex flex-col gap-6 shadow-2xl min-h-full">
+      <section class="space-y-1">
+        <div class="flex justify-between items-start">
+          <h1 class="font-headline text-xl font-black text-on-surface tracking-tighter leading-tight flex-1 mr-2">${p.address||'—'}<br/><span class="text-sm font-bold text-on-surface/60">${p.city||''}, ${p.county} ${p.state||''}</span></h1>
+          <button onclick="navigator.clipboard.writeText(location.origin+location.pathname+'?pid=${p.id}').then(()=>{this.querySelector('span').textContent='check_circle';setTimeout(()=>this.querySelector('span').textContent='share',1500)})" class="text-primary p-1 flex-shrink-0" title="Copy link"><span class="material-symbols-outlined">share</span></button>
+        </div>
+        <div class="flex items-baseline gap-3 mt-2">
+          <span class="text-primary font-headline text-2xl font-bold tracking-tight">${fmtVal(p.total_appraised_value)}</span>
+          ${inv?'<span class="text-amber-400 text-[10px] font-label font-bold tracking-widest uppercase">INVESTOR OWNED</span>':''}
+        </div>
+      </section>
+      <section class="bg-surface-container-high/40 p-4 rounded-lg flex items-center justify-between border border-outline-variant/5">
+        <div class="space-y-1">
+          <h3 class="font-headline text-xs font-extrabold uppercase tracking-widest text-on-surface/80">COSMIC Score</h3>
+          <p class="text-[11px] text-outline/60 max-w-[140px]">${s.verdict==='BUY'?'High potential acquisition target':s.verdict==='HOLD'?'Monitor — moderate signal':'Lower priority asset'}</p>
+        </div>
+        <div class="relative w-20 h-20 flex items-center justify-center">
+          <svg class="w-full h-full transform -rotate-90">
+            <circle class="text-surface-container-highest" cx="40" cy="40" fill="transparent" r="34" stroke="currentColor" stroke-width="4"></circle>
+            <circle class="${s.ringClass}" cx="40" cy="40" fill="transparent" r="34" stroke="currentColor" stroke-dasharray="213.6" stroke-dashoffset="${213.6*(1-s.score/100)}" stroke-linecap="round" stroke-width="4"></circle>
+          </svg>
+          <span class="absolute text-xl font-black font-headline text-primary">${s.score}</span>
+        </div>
+      </section>
+      <section class="space-y-3">
+        <h3 class="font-label text-[10px] text-outline uppercase tracking-widest">Ownership Intelligence</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-surface-container p-3 rounded border border-outline-variant/5">
+            <span class="block text-[9px] font-bold text-outline uppercase tracking-tight mb-1">Entity Type</span>
+            <span class="block font-headline text-xs font-bold text-on-surface">${inv?'LLC / Corp Entity':'Individual Owner'}</span>
+          </div>
+          <div class="bg-surface-container p-3 rounded border border-outline-variant/5">
+            <span class="block text-[9px] font-bold text-outline uppercase tracking-tight mb-1">AURORA Signal</span>
+            <span class="block font-headline text-xs font-bold ${s.verdict==='BUY'?'text-secondary':s.verdict==='HOLD'?'text-tertiary':'text-outline'}">${s.verdict} · ${s.score}/100</span>
+          </div>
+        </div>
+        ${p.owner_name?`<div class="bg-surface-container p-3 rounded border border-outline-variant/5">
+          <span class="block text-[9px] font-bold text-outline uppercase tracking-tight mb-1">Owner of Record</span>
+          ${isInv(p.owner_name)?`<button onclick="openOwnerModal('${p.owner_name.replace(/'/g,"\\'")}','${p.county||''}')" class="font-headline text-xs font-bold text-primary hover:underline text-left">${p.owner_name} <span class="material-symbols-outlined text-[12px] align-middle">open_in_new</span></button>`:`<span class="block font-headline text-xs font-bold text-on-surface">${p.owner_name}</span>`}
+        </div>`:''}
+      </section>
+      <section class="space-y-2">
+        <h3 class="font-label text-[10px] text-outline uppercase tracking-widest">Market Signals</h3>
+        <div class="flex flex-wrap gap-2">
+          ${inv?`<span class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-secondary-container/10 text-secondary text-[10px] font-bold uppercase tracking-tight border border-secondary/20"><span class="material-symbols-outlined text-[13px]">check_circle</span>Investor-Owned</span>`:''}
+          ${hi?`<span class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-secondary-container/10 text-secondary text-[10px] font-bold uppercase tracking-tight border border-secondary/20"><span class="material-symbols-outlined text-[13px]">trending_up</span>High Value</span>`:''}
+          <span class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary-container/10 text-primary text-[10px] font-bold uppercase tracking-tight border border-primary/20"><span class="material-symbols-outlined text-[13px]">ads_click</span>Acquisition Candidate</span>
+        </div>
+      </section>
+      <section class="space-y-2">
+        <h3 class="font-label text-[10px] text-outline uppercase tracking-widest">COSMIC Engines</h3>
+        ${[['METEOR',s.met],['NOVA',s.nov],['ECLIPSE',s.ecl],['PULSAR',s.pul]].map(([n,v])=>`
+        <div class="flex items-center gap-3">
+          <span class="font-label text-[9px] uppercase tracking-wider text-outline w-14">${n}</span>
+          <div class="flex-1 h-1 bg-surface-container-highest rounded-full overflow-hidden">
+            <div class="h-full bg-primary/70 rounded-full" style="width:${(v*100).toFixed(0)}%"></div>
+          </div>
+          <span class="font-label text-[10px] font-bold text-primary w-6 text-right">${(v*100).toFixed(0)}</span>
+        </div>`).join('')}
+        <div class="flex items-center gap-3 pt-1 border-t border-outline-variant/10">
+          <span class="font-label text-[9px] uppercase tracking-wider text-on-surface font-bold w-14">AURORA</span>
+          <div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+            <div class="h-full rounded-full" style="width:${s.score}%;background:linear-gradient(90deg,#a7c8ff,#3291ff)"></div>
+          </div>
+          <span class="font-label text-[11px] font-black text-primary w-6 text-right">${s.score}</span>
+        </div>
+      </section>
+      <section class="pt-2 border-t border-outline-variant/10 flex flex-col gap-2">
+        <button onclick="showCosmicModal(mktCache['${p.id}'])" class="w-full bg-primary py-3 rounded-lg text-on-primary font-headline text-xs font-black uppercase tracking-widest hover:brightness-110 pg-transition flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-base">rocket_launch</span>Run Full COSMIC Analysis
+        </button>
+        <div class="grid grid-cols-2 gap-2 text-[10px] font-label text-on-surface-variant/50">
+          ${p.property_use?`<div class="bg-surface-container p-2 rounded"><span class="block text-[8px] text-outline mb-0.5">USE</span>${fmtUse(p.property_use)}</div>`:''}
+          ${p.year_built?`<div class="bg-surface-container p-2 rounded"><span class="block text-[8px] text-outline mb-0.5">BUILT</span>${p.year_built}</div>`:''}
+        </div>
+      </section>
+    </div>`;
+}
+document.getElementById('mkt-search').addEventListener('input',()=>{clearTimeout(mktTimer);mktTimer=setTimeout(()=>{setMktMode('search');},380);});
+
+/* ─── INVESTOR SCAN ─── */
+function setInvCounty(c) {
+  invCounty=c;
+  document.querySelectorAll('.county-inv').forEach(b=>{
+    const active=b.dataset.c===c;
+    b.className=`county-inv px-3 py-2 rounded-lg font-label text-[10px] uppercase tracking-widest cursor-pointer flex items-center gap-1 ${active?'bg-surface-container-high text-primary':'bg-surface-container text-on-surface/40'}`;
+  });
+  loadInv();
+}
+async function loadInv() {
+  const grid=document.getElementById('inv-grid');
+  grid.innerHTML='<div class="max-w-5xl mx-auto text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">Scanning institutional owners...</div>';
+  const q=document.getElementById('inv-search')?.value.trim()||'';
+  let url=`${SB}/properties?county=eq.${invCounty}&total_appraised_value=gt.500000&limit=50&select=id,address,city,county,total_appraised_value,land_value,improvement_value,owner_name,property_use,year_built,cad_source,acct_number`;
+  if(q) url+=`&address=ilike.${encodeURIComponent(q.toUpperCase())}*`;
+  const data=await query(url);
+  if(!data){grid.innerHTML='<div class="max-w-5xl mx-auto text-center py-20 text-tertiary/50 font-label uppercase tracking-widest text-xs">Query timeout — index building, retry in 30s</div>';return;}
+  let items = data.filter(p=>isInv(p.owner_name));
+  let isFallback = false;
+  if(!items.length){ items = data; isFallback = true; }
+  items.forEach(p=>{ _invDataCache[p.id]=p; });
+  if(!items.length){grid.innerHTML='<div class="max-w-5xl mx-auto text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">No properties found in this market</div>';return;}
+  const sectionTitle = isFallback ? 'Acquisition-Grade Assets' : 'Investor Scan Results';
+  const sectionNote = isFallback ? 'Top assets by appraised value · no LLC entities in this batch' : `${items.length} investor-owned properties`;
+  grid.innerHTML=`<div class="max-w-5xl mx-auto space-y-4"><div class="flex items-center justify-between pb-2"><h2 class="font-headline text-lg font-bold text-on-surface">${sectionTitle}</h2><p class="font-label text-[10px] uppercase tracking-widest text-outline/60">${sectionNote}</p></div><div class="grid grid-cols-1 xl:grid-cols-2 gap-6">${items.map(p=>{
+    const s=cosmicScore(p);
+    const ringOffset=113*(1-(s.score/100));
+    const ringColor=s.score>=72?'text-secondary':s.score>=55?'text-primary':'text-tertiary';
+    return `<div class="group bg-surface-container-low rounded-xl overflow-hidden hover:bg-surface-bright pg-transition transform hover:scale-[1.01] border border-outline-variant/10">
+      <div class="h-36 relative overflow-hidden bg-surface-container-high">
+        <div class="absolute inset-0" style="background:linear-gradient(135deg,rgba(${s.score>=72?'78,222,163':'167,200,255'},0.08) 0%,transparent 60%),#201f20"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-transparent"></div>
+        <!-- COSMIC badge -->
+        <div class="absolute top-3 right-3 glass-panel p-2 rounded-lg flex items-center gap-2">
+          <div class="relative w-10 h-10">
+            <svg class="w-full h-full transform -rotate-90">
+              <circle class="text-outline-variant/30" cx="20" cy="20" fill="transparent" r="18" stroke="currentColor" stroke-width="3"></circle>
+              <circle class="${ringColor}" cx="20" cy="20" fill="transparent" r="18" stroke="currentColor" stroke-dasharray="113" stroke-dashoffset="${ringOffset}" stroke-width="3"></circle>
+            </svg>
+            <span class="absolute inset-0 flex items-center justify-center font-label font-bold text-xs">${s.score}</span>
+          </div>
+          <div class="leading-none">
+            <p class="font-label text-[9px] uppercase tracking-widest text-on-surface-variant/60">COSMIC</p>
+            <p class="text-[9px] ${ringColor} font-bold">${s.label}</p>
+          </div>
+        </div>
+        <!-- Address overlay -->
+        <div class="absolute bottom-3 left-4 right-20">
+          <p class="font-headline text-sm font-extrabold text-on-surface leading-tight">${(p.address||'—').substring(0,40)}</p>
+          <p class="text-on-surface-variant/60 text-[11px]">${p.city||''}, ${p.county}</p>
+        </div>
+      </div>
+      <div class="p-4 space-y-3">
+        <div class="flex justify-between items-start">
+          <div class="flex flex-wrap gap-1">
+            ${isInv(p.owner_name)?`<button onclick="openOwnerModal('${(p.owner_name||'').replace(/'/g,"\\'")}')" class="bg-surface-container-highest px-2 py-0.5 rounded text-[9px] font-label uppercase tracking-wider text-primary hover:text-primary/80 pg-transition">${(p.owner_name||'—').substring(0,30)}</button>`:`<span class="bg-surface-container-highest px-2 py-0.5 rounded text-[9px] font-label uppercase tracking-wider text-on-surface">${(p.owner_name||'—').substring(0,30)}</span>`}
+            <span class="bg-secondary-container/20 text-secondary px-2 py-0.5 rounded text-[9px] font-label uppercase tracking-wider">Investor</span>
+            ${s.verdict==='BUY'?'<span class="bg-primary-container/20 text-primary px-2 py-0.5 rounded text-[9px] font-label uppercase tracking-wider">Low Risk</span>':''}
+          </div>
+          <span class="font-headline text-base font-black text-primary ml-2 flex-shrink-0">${fmtVal(p.total_appraised_value)}</span>
+        </div>
+        <div class="pt-2 flex items-center justify-between border-t border-outline-variant/10">
+          <div class="flex gap-4">
+            <div class="text-center">
+              <p class="text-[9px] font-label uppercase text-on-surface-variant/40">Land</p>
+              <p class="text-xs font-bold">${fmtVal(p.land_value)}</p>
+            </div>
+            <div class="text-center">
+              <p class="text-[9px] font-label uppercase text-on-surface-variant/40">AURORA</p>
+              <p class="text-xs font-bold ${s.verdict==='BUY'?'text-secondary':'text-primary'}">${s.verdict}</p>
+            </div>
+          </div>
+          <button onclick="toggleWatchBtn(this,'${p.id}')" data-pid="${p.id}" class="material-symbols-outlined text-outline hover:text-primary pg-transition">star</button>
+        </div>
+      </div>
+    </div>`;}).join('')}</div></div>`;
+}
+document.getElementById('inv-search')?.addEventListener('input',()=>{clearTimeout(invTimer);invTimer=setTimeout(loadInv,400);});
+
+/* ─── COSMIC INSIGHTS ─── */
+function setInsCounty(c) {
+  insCounty=c;
+  document.querySelectorAll('.county-ins').forEach(b=>{
+    const active=b.dataset.c===c;
+    b.className=`county-ins px-3 py-2 rounded-lg font-label text-[10px] uppercase tracking-widest cursor-pointer ${active?'bg-surface-container-high text-primary':'bg-surface-container text-on-surface/40'}`;
+  });
+  loadIns();
+}
+async function loadIns() {
+  const grid=document.getElementById('ins-grid');
+  grid.innerHTML='<div class="max-w-6xl mx-auto text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">Running COSMIC pipeline...</div>';
+  const url=`${SB}/properties?county=eq.${insCounty}&total_appraised_value=gt.500000&land_value=gt.0&limit=50&select=id,address,city,county,total_appraised_value,land_value,improvement_value,owner_name,property_use,year_built,acct_number`;
+  const data=await query(url);
+  if(!data){grid.innerHTML='<div class="max-w-6xl mx-auto text-center py-20 text-tertiary/50 font-label uppercase tracking-widest text-xs">Timeout — retry in 30s</div>';return;}
+  if(!data.length){grid.innerHTML='<div class="max-w-6xl mx-auto text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">No results</div>';return;}
+  // Sort by aurora score client-side
+  const scored=data.map(p=>({...p,_s:cosmicScore(p)})).sort((a,b)=>b._s.aur-a._s.aur);
+  _insDataCache = {}; scored.forEach(p=>{ _insDataCache[p.id]=p; });
+  grid.innerHTML=`<div class="max-w-6xl mx-auto space-y-3">
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">Total Scanned</p>
+        <p class="font-headline text-2xl font-black text-on-surface">${scored.length}</p>
+        <p class="font-label text-[9px] text-outline/60 mt-1">${insCounty} County</p>
+      </div>
+      <div class="bg-surface-container rounded-xl p-5 border border-secondary/20">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Signals</p>
+        <p class="font-headline text-2xl font-black text-secondary">${scored.filter(p=>p._s.verdict==='BUY').length}</p>
+        <p class="font-label text-[9px] text-secondary/60 mt-1">AURORA ≥ 72</p>
+      </div>
+      <div class="bg-surface-container rounded-xl p-5 border border-primary/20">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">HOLD Signals</p>
+        <p class="font-headline text-2xl font-black text-primary">${scored.filter(p=>p._s.verdict==='HOLD').length}</p>
+        <p class="font-label text-[9px] text-primary/60 mt-1">AURORA 55–72</p>
+      </div>
+      <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">Investor Owned</p>
+        <p class="font-headline text-2xl font-black text-amber-400">${scored.filter(p=>isInv(p.owner_name)).length}</p>
+        <p class="font-label text-[9px] text-amber-400/60 mt-1">LLC / Corp</p>
+      </div>
+    </div>
+    ${scored.map((p,i)=>{
+      const s=p._s; const inv=isInv(p.owner_name);
+      const ringColor=s.score>=72?'text-secondary':s.score>=55?'text-primary':'text-tertiary';
+      const ringOffset=113*(1-s.score/100);
+      return `<div class="flex items-center gap-6 bg-surface-container-low rounded-xl p-5 hover:bg-surface-container pg-transition border border-outline-variant/10 group cursor-pointer" onclick="_showInsModal('${p.id}')"  >
+        <div class="font-headline text-2xl font-black text-outline/30 w-6 flex-shrink-0">${i+1}</div>
+        <div class="relative w-12 h-12 flex-shrink-0">
+          <svg class="w-full h-full transform -rotate-90">
+            <circle class="text-outline-variant/20" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-width="3"></circle>
+            <circle class="${ringColor}" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-dasharray="125.6" stroke-dashoffset="${125.6*(1-s.score/100)}" stroke-width="3"></circle>
+          </svg>
+          <span class="absolute inset-0 flex items-center justify-center font-label font-bold text-[11px]">${s.score}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-headline text-sm font-bold text-on-surface truncate">${p.address||'—'}</p>
+          <p class="text-[11px] text-on-surface-variant/50">${p.city||''} · ${p.county}</p>
+          ${p.owner_name?`<p class="text-[10px] text-outline/60 truncate mt-0.5">${p.owner_name}</p>`:''}
+        </div>
+        <div class="flex items-center gap-6 flex-shrink-0">
+          <div class="text-right">
+            <p class="text-[9px] font-label uppercase text-outline/50">Appraised</p>
+            <p class="font-headline text-sm font-bold text-primary">${fmtVal(p.total_appraised_value)}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[9px] font-label uppercase text-outline/50">Land</p>
+            <p class="font-headline text-sm font-bold text-on-surface">${fmtVal(p.land_value)}</p>
+          </div>
+          <div class="text-center">
+            <span class="px-3 py-1.5 rounded-full text-[10px] font-label font-bold uppercase tracking-wider ${s.verdict==='BUY'?'bg-secondary/10 text-secondary border border-secondary/20':s.verdict==='HOLD'?'bg-primary/10 text-primary border border-primary/20':'bg-outline/10 text-outline border border-outline/20'}">${s.verdict}</span>
+          </div>
+          ${inv?'<span class="text-[9px] font-label uppercase text-amber-400 bg-amber-400/10 px-2 py-1 rounded">INV</span>':'<div class="w-8"></div>'}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+  renderInsHeatmap(scored);
+}
+
+/* ─── WATCHLIST HELPERS ─── */
+let _invDataCache = {}; // cache for quick watch toggling
+let _insDataCache = {}; // cache for COSMIC Insights rows
+let _overviewCache = {}; // cache for overview targets
+function _showInsModal(id) { const p = _insDataCache[id]; if(p) showCosmicModal(p); }
+function _overviewShowCosmic(id) { const p = _overviewCache[id] || _insDataCache[id] || mktCache[id]; if(p) showCosmicModal(p); else { setInsCounty((p&&p.county)||insCounty); showView('insights'); } }
+function toggleWatchBtn(btn, id) {
+  const p = _invDataCache[id] || mktCache[id];
+  if(!p) return;
+  const added = toggleWatch(p);
+  btn.classList.toggle('text-primary', added);
+  btn.classList.toggle('text-outline', !added);
+  btn.textContent = added ? 'star_rate' : 'star';
+}
+
+/* ─── WATCHLIST (localStorage) ─── */
+function getWatchlist() { try { return JSON.parse(localStorage.getItem('pg_watchlist')||'[]'); } catch(e){ return []; } }
+function saveWatchlist(arr) { localStorage.setItem('pg_watchlist', JSON.stringify(arr)); }
+function isWatched(id) { return getWatchlist().some(p=>p.id===id); }
+function toggleWatch(p) {
+  let wl = getWatchlist();
+  if(isWatched(p.id)) { wl = wl.filter(x=>x.id!==p.id); } else { wl.push(p); }
+  saveWatchlist(wl);
+  return isWatched(p.id);
+}
+function clearWatchlist() {
+  if(!confirm('Clear all saved properties?')) return;
+  saveWatchlist([]);
+  renderWatchlist();
+}
+function renderWatchlist() {
+  const grid = document.getElementById('watchlist-grid');
+  if(!grid) return;
+  const wl = getWatchlist();
+  if(!wl.length) {
+    grid.innerHTML = `<div class="max-w-5xl mx-auto flex flex-col items-center justify-center py-24 gap-4">
+      <span class="material-symbols-outlined text-4xl text-outline/20">bookmark_border</span>
+      <p class="font-headline text-sm font-bold text-outline/40 uppercase tracking-widest">No properties saved yet</p>
+      <p class="text-[11px] text-outline/30">Star any property to add it to your watchlist</p>
+      <button onclick="showView('investor')" class="mt-2 px-6 py-3 rounded-lg bg-primary text-on-primary font-label text-[10px] font-bold uppercase tracking-widest hover:brightness-110 pg-transition">Browse Investor Scan</button>
+    </div>`;
+    return;
+  }
+  const scored = wl.map(p=>({...p,_s:cosmicScore(p)}));
+  const totalVal = scored.reduce((a,p)=>a+(+p.total_appraised_value||0),0);
+  const buyCount = scored.filter(p=>p._s.verdict==='BUY').length;
+  const avgScore = Math.round(scored.reduce((a,p)=>a+p._s.score,0)/scored.length);
+  grid.innerHTML = `<div class="max-w-5xl mx-auto space-y-6">
+    <div class="grid grid-cols-4 gap-4">
+      <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">Saved Properties</p>
+        <p class="font-headline text-2xl font-black text-on-surface">${wl.length}</p>
+      </div>
+      <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">Portfolio Value</p>
+        <p class="font-headline text-2xl font-black text-primary">${fmtVal(totalVal)}</p>
+      </div>
+      <div class="bg-surface-container rounded-xl p-5 border border-secondary/20">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Signals</p>
+        <p class="font-headline text-2xl font-black text-secondary">${buyCount}</p>
+      </div>
+      <div class="bg-surface-container rounded-xl p-5 border border-primary/20">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">Avg AURORA</p>
+        <p class="font-headline text-2xl font-black text-primary">${avgScore}</p>
+      </div>
+    </div>
+    <div class="space-y-3">
+      ${scored.map(p=>{
+        const s=p._s; const inv=isInv(p.owner_name);
+        return `<div class="flex items-center gap-4 bg-surface-container rounded-xl p-4 border border-outline-variant/10 hover:bg-surface-container-high pg-transition">
+          <div class="relative w-10 h-10 flex-shrink-0">
+            <svg class="w-full h-full transform -rotate-90">
+              <circle class="text-outline-variant/20" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-width="3"></circle>
+              <circle class="${s.score>=72?'text-secondary':s.score>=55?'text-primary':'text-tertiary'}" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-dasharray="100.5" stroke-dashoffset="${100.5*(1-s.score/100)}" stroke-width="3"></circle>
+            </svg>
+            <span class="absolute inset-0 flex items-center justify-center font-label font-bold text-[10px]">${s.score}</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-headline text-sm font-bold text-on-surface truncate">${p.address||'—'}</p>
+            <p class="text-[11px] text-on-surface-variant/50">${p.city||''} · ${p.county}</p>
+            ${p.owner_name?`<p class="text-[10px] text-outline/60 truncate">${p.owner_name}</p>`:''}
+          </div>
+          <div class="flex items-center gap-4 flex-shrink-0">
+            <div class="text-right">
+              <p class="text-[9px] font-label uppercase text-outline/50">Value</p>
+              <p class="font-headline text-sm font-bold text-primary">${fmtVal(p.total_appraised_value)}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase ${s.verdict==='BUY'?'bg-secondary/10 text-secondary border border-secondary/20':s.verdict==='HOLD'?'bg-primary/10 text-primary border border-primary/20':'bg-outline/10 text-outline border border-outline/20'}">${s.verdict}</span>
+            <button onclick="removeFromWatchlist('${p.id}')" class="text-outline/40 hover:text-error pg-transition"><span class="material-symbols-outlined text-sm">delete</span></button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+function removeFromWatchlist(id) {
+  let wl = getWatchlist().filter(p=>String(p.id)!==String(id));
+  saveWatchlist(wl);
+  renderWatchlist();
+}
+
+/* ─── OWNER / ENTITY DETAIL ─── */
+function openOwnerModal(ownerName, county) {
+  document.getElementById('ownerDetailModal').classList.remove('hidden');
+  document.getElementById('owner-modal-name').textContent = ownerName;
+  document.getElementById('owner-modal-county').textContent = county ? county + ' County' : '';
+  loadOwnerDetail(ownerName, county);
+}
+function closeOwnerModal() { document.getElementById('ownerDetailModal').classList.add('hidden'); }
+async function loadOwnerDetail(ownerName, county) {
+  const body = document.getElementById('owner-modal-body');
+  body.innerHTML = '<div class="p-6 text-center text-outline/30 font-label uppercase tracking-widest text-xs">Querying entity portfolio...</div>';
+  const encoded = encodeURIComponent(ownerName);
+  const url = `${SB}/properties?owner_name=eq.${encoded}&limit=100&select=id,address,city,county,total_appraised_value,land_value,improvement_value,property_use,year_built`;
+  const data = await query(url);
+  if(!data || !data.length) {
+    body.innerHTML = '<div class="p-6 text-center text-outline/30 font-label uppercase tracking-widest text-xs">No properties found for this entity</div>';
+    return;
+  }
+  const scored = data.map(p=>({...p,_s:cosmicScore(p)}));
+  const totalVal = scored.reduce((a,p)=>a+(+p.total_appraised_value||0),0);
+  const avgScore = Math.round(scored.reduce((a,p)=>a+p._s.score,0)/scored.length);
+  const counties = {};
+  scored.forEach(p=>{ counties[p.county]=(counties[p.county]||0)+1; });
+  const topCounties = Object.entries(counties).sort((a,b)=>b[1]-a[1]);
+  const top3 = scored.sort((a,b)=>(+b.total_appraised_value||0)-(+a.total_appraised_value||0)).slice(0,3);
+  body.innerHTML = `<div class="p-6 space-y-6">
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Properties Linked</p>
+        <p class="font-headline text-2xl font-black text-on-surface">${data.length}</p>
+      </div>
+      <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Portfolio Value</p>
+        <p class="font-headline text-2xl font-black text-primary">${fmtVal(totalVal)}</p>
+      </div>
+      <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Avg COSMIC Score</p>
+        <p class="font-headline text-2xl font-black text-secondary">${avgScore}/100</p>
+      </div>
+      <div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant/10">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">County Concentration</p>
+        <p class="font-headline text-base font-black text-on-surface">${topCounties[0]?topCounties[0][0]:'—'}</p>
+        <p class="text-[10px] text-outline/50">${topCounties.map(([c,n])=>`${c}: ${n}`).join(' · ')}</p>
+      </div>
+    </div>
+    <div>
+      <h3 class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Top 3 Properties by Value</h3>
+      <div class="space-y-2">
+        ${top3.map((p,i)=>`<div class="flex items-center gap-3 bg-surface-container-low rounded-lg p-3 border border-outline-variant/10">
+          <span class="font-headline text-lg font-black text-outline/30 w-5">${i+1}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-bold text-on-surface truncate">${p.address||'—'}</p>
+            <p class="text-[10px] text-outline/50">${p.city||''} · ${p.county}</p>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <p class="text-xs font-bold text-primary">${fmtVal(p.total_appraised_value)}</p>
+            <p class="text-[9px] ${p._s.verdict==='BUY'?'text-secondary':'text-primary'} font-label font-bold">${p._s.verdict}</p>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div>
+      <h3 class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Full Holdings</h3>
+      <div class="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+        ${scored.map(p=>`<div class="flex items-center justify-between px-3 py-2 rounded hover:bg-surface-container-lowest pg-transition">
+          <div class="flex-1 min-w-0 mr-4">
+            <p class="text-xs text-on-surface truncate">${p.address||'—'}</p>
+            <p class="text-[9px] text-outline/50">${p.city||''} · ${p.county}</p>
+          </div>
+          <span class="text-xs font-bold text-primary flex-shrink-0">${fmtVal(p.total_appraised_value)}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ─── REPORTS MODAL ─── */
+function openReportsModal() {
+  document.getElementById('reportsModal').classList.remove('hidden');
+  loadReportsData();
+}
+function closeReportsModal() { document.getElementById('reportsModal').classList.add('hidden'); }
+async function loadReportsData() {
+  const body = document.getElementById('reports-modal-body');
+  body.innerHTML = '<div class="text-center text-outline/30 font-label uppercase tracking-widest text-xs py-8">Loading market data...</div>';
+  const counties = ['Travis','Harris','Suffolk'];
+  const results = await Promise.all(counties.map(c=>
+    query(`${SB}/properties?county=eq.${c}&total_appraised_value=gt.0&limit=500&select=county,total_appraised_value,owner_name`)
+  ));
+  let html = '<div class="space-y-6">';
+  counties.forEach((c,i)=>{
+    const data = results[i]||[];
+    const totalVal = data.reduce((a,p)=>a+(+p.total_appraised_value||0),0);
+    const avgVal = data.length?Math.round(totalVal/data.length):0;
+    const invCount = data.filter(p=>isInv(p.owner_name)).length;
+    const invPct = data.length?Math.round(invCount/data.length*100):0;
+    const color = i===0?'text-primary':i===1?'text-tertiary':'text-secondary';
+    html += `<div class="bg-surface-container-low rounded-xl p-5 border border-outline-variant/10">
+      <h3 class="font-headline text-base font-bold ${color} mb-4">${c} County</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Properties (sample)</p><p class="font-headline text-lg font-black text-on-surface">${data.length.toLocaleString()}</p></div>
+        <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Total Appraised</p><p class="font-headline text-lg font-black text-on-surface">${fmtVal(totalVal)}</p></div>
+        <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Avg Value</p><p class="font-headline text-lg font-black text-on-surface">${fmtVal(avgVal)}</p></div>
+        <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Investor Owned</p><p class="font-headline text-lg font-black text-amber-400">${invPct}%</p></div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+/* ─── RISK MATRIX MODAL ─── */
+function openRiskModal() {
+  document.getElementById('riskMatrixModal').classList.remove('hidden');
+  loadRiskData();
+}
+function closeRiskModal() { document.getElementById('riskMatrixModal').classList.add('hidden'); }
+async function loadRiskData() {
+  const body = document.getElementById('risk-modal-body');
+  body.innerHTML = '<div class="text-center text-outline/30 font-label uppercase tracking-widest text-xs py-8">Analyzing risk tiers...</div>';
+  const counties = ['Travis','Harris','Suffolk'];
+  const results = await Promise.all(counties.map(c=>
+    query(`${SB}/properties?county=eq.${c}&total_appraised_value=gt.0&limit=500&select=county,total_appraised_value,land_value,improvement_value,owner_name`)
+  ));
+  let allProps = [];
+  counties.forEach((c,i)=>{ (results[i]||[]).forEach(p=>{ p._county=c; allProps.push(p); }); });
+  const scored = allProps.map(p=>({...p,_s:cosmicScore(p)}));
+  const low = scored.filter(p=>p._s.verdict==='BUY');
+  const med = scored.filter(p=>p._s.verdict==='HOLD');
+  const high = scored.filter(p=>p._s.verdict==='PASS');
+  const totalVal = scored.reduce((a,p)=>a+(+p.total_appraised_value||0),0);
+  const highRiskVal = high.reduce((a,p)=>a+(+p.total_appraised_value||0),0);
+  const invCount = scored.filter(p=>isInv(p.owner_name)).length;
+  const invPct = scored.length?Math.round(invCount/scored.length*100):0;
+  const countyVaR = {};
+  counties.forEach(c=>{
+    const cp = scored.filter(p=>p._county===c&&p._s.verdict==='PASS');
+    countyVaR[c] = cp.reduce((a,p)=>a+(+p.total_appraised_value||0),0);
+  });
+  body.innerHTML = `<div class="space-y-5">
+    <div class="grid grid-cols-3 gap-3">
+      <div class="bg-surface-container-low rounded-xl p-4 border border-secondary/20 text-center">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">Low Risk</p>
+        <p class="font-headline text-2xl font-black text-secondary">${low.length}</p>
+        <p class="text-[10px] text-secondary/60">BUY · AURORA ≥72</p>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-4 border border-primary/20 text-center">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">Medium Risk</p>
+        <p class="font-headline text-2xl font-black text-primary">${med.length}</p>
+        <p class="text-[10px] text-primary/60">HOLD · 55–72</p>
+      </div>
+      <div class="bg-surface-container-low rounded-xl p-4 border border-tertiary/20 text-center">
+        <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">High Risk</p>
+        <p class="font-headline text-2xl font-black text-tertiary">${high.length}</p>
+        <p class="text-[10px] text-tertiary/60">PASS · &lt;55</p>
+      </div>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/10 space-y-2">
+      <h3 class="font-label text-[10px] uppercase tracking-widest text-outline">Investor Concentration</h3>
+      <div class="flex items-center gap-3">
+        <div class="flex-1 h-2 bg-surface-container-highest rounded-full overflow-hidden">
+          <div class="h-full bg-amber-400 rounded-full" style="width:${invPct}%"></div>
+        </div>
+        <span class="font-label font-bold text-amber-400 text-sm">${invPct}%</span>
+      </div>
+      <p class="text-[10px] text-outline/50">${invCount.toLocaleString()} of ${scored.length.toLocaleString()} sampled properties are investor-owned</p>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/10">
+      <h3 class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Value-at-Risk by County (High Risk tier)</h3>
+      <div class="space-y-2">
+        ${counties.map(c=>`<div class="flex justify-between items-center text-sm">
+          <span class="text-on-surface-variant/70 font-label text-[11px]">${c} County</span>
+          <span class="font-bold text-tertiary">${fmtVal(countyVaR[c]||0)}</span>
+        </div>`).join('')}
+        <div class="flex justify-between items-center text-sm border-t border-outline-variant/10 pt-2">
+          <span class="text-on-surface font-bold font-label text-[11px]">Total High-Risk Exposure</span>
+          <span class="font-bold text-on-surface">${fmtVal(highRiskVal)}</span>
+        </div>
+      </div>
+    </div>
+    <p class="text-[9px] text-outline/30 font-label uppercase tracking-widest text-center">Risk tiers computed from 500-property sample per county via AURORA pipeline</p>
+  </div>`;
+}
+
+/* ─── EXECUTIVE OVERVIEW ─── */
+async function loadOverview() {
+  const counties = ['Travis','Harris','Suffolk'];
+  const labels = {Travis:'Travis TX (Austin)',Harris:'Harris TX (Houston)',Suffolk:'Suffolk MA (Boston)'};
+  const colors = {Travis:'border-primary/30 text-primary',Harris:'border-tertiary/30 text-tertiary',Suffolk:'border-secondary/30 text-secondary'};
+  // Load county counts
+  const countResults = await Promise.all(counties.map(c=>
+    query(`${SB}/properties?county=eq.${c}&limit=1&select=id`)
+  ));
+  // Load scored batch for signals
+  const batchResults = await Promise.all(counties.map(c=>
+    query(`${SB}/properties?county=eq.${c}&total_appraised_value=gt.500000&land_value=gt.0&limit=50&select=id,address,city,county,total_appraised_value,land_value,improvement_value,owner_name,property_use`)
+  ));
+  // Known totals (from live badge)
+  const knownTotals = {Travis:435642,Harris:1601285,Suffolk:183445};
+  // County cards
+  const ccEl = document.getElementById('overview-county-cards');
+  if(ccEl) ccEl.innerHTML = counties.map(c=>{
+    const total = knownTotals[c];
+    const cls = colors[c];
+    return `<div class="bg-surface-container rounded-xl p-5 border ${cls.split(' ')[0]} cursor-pointer hover:bg-surface-container-high pg-transition" onclick="setMktCounty('${c}');showView('market')">
+      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">${labels[c]}</p>
+      <p class="font-headline text-2xl font-black ${cls.split(' ')[1]}">${total.toLocaleString()}</p>
+      <p class="text-[10px] text-outline/50 mt-1">Total properties · click to explore</p>
+    </div>`;
+  }).join('');
+  // Aggregate signals
+  let allScored = [];
+  batchResults.forEach(data=>{ if(data) allScored.push(...data.map(p=>({...p,_s:cosmicScore(p)}))); });
+  const buy = allScored.filter(p=>p._s.verdict==='BUY').length;
+  const hold = allScored.filter(p=>p._s.verdict==='HOLD').length;
+  const pass = allScored.filter(p=>p._s.verdict==='PASS').length;
+  const srEl = document.getElementById('overview-signal-row');
+  if(srEl) srEl.innerHTML = `
+    <div class="bg-surface-container rounded-xl p-5 border border-secondary/20">
+      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Signals</p>
+      <p class="font-headline text-3xl font-black text-secondary">${buy}</p>
+      <p class="text-[10px] text-secondary/60 mt-1">AURORA ≥ 72 · acquisition-grade</p>
+    </div>
+    <div class="bg-surface-container rounded-xl p-5 border border-primary/20">
+      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">HOLD Signals</p>
+      <p class="font-headline text-3xl font-black text-primary">${hold}</p>
+      <p class="text-[10px] text-primary/60 mt-1">Monitor — moderate potential</p>
+    </div>
+    <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
+      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">PASS Signals</p>
+      <p class="font-headline text-3xl font-black text-outline/60">${pass}</p>
+      <p class="text-[10px] text-outline/30 mt-1">Lower priority assets</p>
+    </div>`;
+  // Top targets
+  _overviewCache = {}; allScored.forEach(p=>{ _overviewCache[p.id]=p; });
+  const top3 = allScored.sort((a,b)=>b._s.score-a._s.score).slice(0,3);
+  const tEl = document.getElementById('overview-targets');
+  if(tEl) tEl.innerHTML = top3.length ? top3.map((p,i)=>{
+    const s=p._s;
+    return `<div class="flex items-center gap-4 bg-surface-container rounded-xl p-4 border border-outline-variant/10 hover:bg-surface-container-high pg-transition cursor-pointer" onclick="_overviewShowCosmic('${p.id}')">
+      <span class="font-headline text-2xl font-black text-outline/30 w-6 flex-shrink-0">${i+1}</span>
+      <div class="relative w-10 h-10 flex-shrink-0">
+        <svg class="w-full h-full transform -rotate-90">
+          <circle class="text-outline-variant/20" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-width="3"></circle>
+          <circle class="${s.score>=72?'text-secondary':'text-primary'}" cx="20" cy="20" fill="transparent" r="16" stroke="currentColor" stroke-dasharray="100.5" stroke-dashoffset="${100.5*(1-s.score/100)}" stroke-width="3"></circle>
+        </svg>
+        <span class="absolute inset-0 flex items-center justify-center font-label font-bold text-[10px]">${s.score}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-headline text-sm font-bold text-on-surface truncate">${p.address||'—'}</p>
+        <p class="text-[11px] text-on-surface-variant/50">${p.city||''} · ${p.county}</p>
+      </div>
+      <span class="px-3 py-1.5 rounded-full text-[10px] font-label font-bold uppercase tracking-wider flex-shrink-0 ${s.verdict==='BUY'?'bg-secondary/10 text-secondary border border-secondary/20':'bg-primary/10 text-primary border border-primary/20'}">${s.verdict}</span>
+    </div>`;
+  }).join('') : '<p class="text-outline/30 font-label text-[10px] uppercase tracking-widest text-center py-8">Loading acquisition targets...</p>';
+}
+
+/* ─── MARKET SUMMARY ─── */
+async function loadSummary() {
+  const grid = document.getElementById('summary-grid');
+  if(!grid) return;
+  grid.innerHTML = '<div class="max-w-6xl mx-auto text-center py-20 text-outline/30 font-label uppercase tracking-widest text-xs">Loading market data...</div>';
+  const counties = ['Travis','Harris','Suffolk'];
+  const labels = {Travis:'Travis County, TX (Austin)',Harris:'Harris County, TX (Houston)',Suffolk:'Suffolk County, MA (Boston)'};
+  const results = await Promise.all(counties.map(c=>
+    query(`${SB}/properties?county=eq.${c}&total_appraised_value=gt.0&limit=500&select=county,total_appraised_value,owner_name,property_use`)
+  ));
+  let html = '<div class="max-w-6xl mx-auto space-y-8">';
+  counties.forEach((c,i)=>{
+    const data = results[i]||[];
+    if(!data.length) return;
+    const totalVal = data.reduce((a,p)=>a+(+p.total_appraised_value||0),0);
+    const avgVal = Math.round(totalVal/data.length);
+    const invProps = data.filter(p=>isInv(p.owner_name));
+    const invPct = Math.round(invProps.length/data.length*100);
+    // Top uses
+    const uses = {};
+    data.forEach(p=>{ if(p.property_use){ uses[p.property_use]=(uses[p.property_use]||0)+1; } });
+    const topUses = Object.entries(uses).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    // Top owners by count
+    const owners = {};
+    data.forEach(p=>{ if(p.owner_name&&isInv(p.owner_name)){ owners[p.owner_name]=(owners[p.owner_name]||0)+1; } });
+    const topOwners = Object.entries(owners).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const accent = i===0?'text-primary border-primary/30':i===1?'text-tertiary border-tertiary/30':'text-secondary border-secondary/30';
+    html += `<div class="bg-surface-container rounded-xl p-6 border ${accent.split(' ')[1]}">
+      <h2 class="font-headline text-xl font-bold ${accent.split(' ')[0]} mb-5">${labels[c]}</h2>
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="bg-surface-container-low rounded-lg p-4 border border-outline-variant/10">
+          <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Properties (sample)</p>
+          <p class="font-headline text-xl font-black text-on-surface">${data.length.toLocaleString()}</p>
+        </div>
+        <div class="bg-surface-container-low rounded-lg p-4 border border-outline-variant/10">
+          <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Total Appraised</p>
+          <p class="font-headline text-xl font-black text-on-surface">${fmtVal(totalVal)}</p>
+        </div>
+        <div class="bg-surface-container-low rounded-lg p-4 border border-outline-variant/10">
+          <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Avg Value</p>
+          <p class="font-headline text-xl font-black text-on-surface">${fmtVal(avgVal)}</p>
+        </div>
+        <div class="bg-surface-container-low rounded-lg p-4 border border-amber-400/20">
+          <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Investor Owned</p>
+          <p class="font-headline text-xl font-black text-amber-400">${invPct}%</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <h3 class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Top Property Uses</h3>
+          <div class="space-y-1.5">
+            ${topUses.map(([use,count])=>`<div class="flex justify-between items-center text-xs">
+              <span class="text-on-surface-variant/70 truncate flex-1 mr-2">${fmtUse(use)}</span>
+              <span class="font-bold text-on-surface flex-shrink-0">${count.toLocaleString()}</span>
+            </div>`).join('')}
+          </div>
+        </div>
+        <div>
+          <h3 class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Top Investors by Holdings</h3>
+          <div class="space-y-1.5">
+            ${topOwners.length?topOwners.map(([name,count])=>`<div class="flex justify-between items-center text-xs cursor-pointer hover:text-primary pg-transition" onclick="openOwnerModal('${name.replace(/'/g,"\\'")}','${c}')">
+              <span class="text-on-surface-variant/70 truncate flex-1 mr-2">${name.substring(0,25)}</span>
+              <span class="font-bold text-amber-400 flex-shrink-0">${count}</span>
+            </div>`).join(''):'<p class="text-[10px] text-outline/40 font-label">No investor owners in sample</p>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  grid.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════
+   GUIDED TOUR SYSTEM v2 — TWO-LAYER
+═══════════════════════════════════════════ */
+
+// ── Tour State ──
+let tourActive = false;
+let tourType = null; // 'quick' | 'full'
+let tourStepIndex = 0;
+let tourChapterIndex = 0;
+
+// ── Quick Tour Steps ──
+const QUICK_TOUR_STEPS = [
+  {
+    title: "Command Center",
+    body: "Your command center. Scale, top targets, navigation into core workflows.",
+    view: "overview",
+    highlight: null
+  },
+  {
+    title: "Deal Finder",
+    body: "The fastest path to ranked acquisition opportunities. Click Find Best Deals to surface the strongest targets in the selected market.",
+    view: "overview",
+    highlight: { selector: "#deal-finder-btn", pad: 10 }
+  },
+  {
+    title: "Market Intelligence",
+    body: "Map-led exploration. Heatmap, ownership clusters, and spatial context. Select a property to reveal decision-grade intelligence on the right.",
+    view: "market",
+    highlight: null
+  },
+  {
+    title: "Full COSMIC Analysis",
+    body: "The decision engine. Translates raw scoring into: recommendation, primary drivers, trigger conditions, and better nearby alternatives.",
+    view: "market",
+    highlight: { selector: "#mkt-detail", pad: 8 },
+    action: () => { const first = document.querySelector('.pg-prop-item'); if(first) first.click(); }
+  },
+  {
+    title: "Better Opportunities Nearby",
+    body: "The system compares your selected property to stronger nearby options. Don't waste time on second-tier targets.",
+    view: "market",
+    highlight: { selector: "#mkt-detail", pad: 8 }
+  },
+  {
+    title: "Watchlist",
+    body: "Save high-priority targets here. Persists across sessions. Your buyer memory.",
+    view: "watchlist",
+    highlight: null
+  }
+];
+
+// ── Full Tour Chapters ──
+const FULL_TOUR_CHAPTERS = [
+  {
+    title: "Product Overview",
+    steps: [
+      {
+        title: "Your Command Center",
+        body: "PropertyGraph gives you institutional-grade intelligence on 2.2M+ real property records. This is where you orient.",
+        view: "overview",
+        highlight: null
+      },
+      {
+        title: "Navigation",
+        body: "Six core surfaces: Overview, Investor Scan, Market Intelligence, COSMIC Insights, Market Summary, and Watchlist. Each serves a distinct workflow.",
+        view: "overview",
+        highlight: { selector: "nav .flex.items-center.gap-6", pad: 8 }
+      },
+      {
+        title: "Live Property Count",
+        body: "2,220,372 records indexed and scored in real-time. This is live CAD data, not stale listings.",
+        view: "overview",
+        highlight: { selector: "nav .flex.items-center.gap-2.bg-surface-container", pad: 6 }
+      },
+      {
+        title: "Top Acquisition Targets",
+        body: "The highest-scoring properties in the selected market surface here automatically. These are your strongest starting points.",
+        view: "overview",
+        highlight: { selector: "#overview-top-targets", pad: 8 }
+      }
+    ],
+    endCta: "Next: Find the best opportunities in the current market."
+  },
+  {
+    title: "Finding Deals",
+    steps: [
+      {
+        title: "Deal Finder",
+        body: "Deal Finder ranks the best acquisition opportunities in the selected market by COSMIC score. Click Find Best Deals to run it.",
+        view: "overview",
+        highlight: { selector: "#deal-finder-btn", pad: 10 }
+      },
+      {
+        title: "Ranked Results",
+        body: "Results are sorted by AURORA score — the synthesized acquisition signal. BUY indicates highest conviction. HOLD means watch. PASS means skip.",
+        view: "overview",
+        highlight: { selector: "#deal-finder-panel", pad: 8 },
+        action: () => { const btn = document.getElementById('deal-finder-btn'); if(btn) btn.click(); }
+      },
+      {
+        title: "Reason Lines",
+        body: "Every result includes a reason line — why this asset was surfaced. Not just a score. Decision context.",
+        view: "overview",
+        highlight: { selector: "#deal-finder-panel .pg-prop-item", pad: 6 }
+      }
+    ],
+    endCta: "Next: see where those opportunities live on the map."
+  },
+  {
+    title: "Working the Map",
+    steps: [
+      {
+        title: "Market Intelligence",
+        body: "The map is where geographic context and target discovery converge. Targets, clusters, heatmap — all live here.",
+        view: "market",
+        highlight: null
+      },
+      {
+        title: "Intelligence Modes",
+        body: "Toggle between Market Feed, Heatmap, and Ownership views. Each reveals a different dimension of the market.",
+        view: "market",
+        highlight: { selector: ".mkt-mode", pad: 8 }
+      },
+      {
+        title: "Property List",
+        body: "The left panel lists all targets in the current view. Select one to focus it on the map and load decision-grade intelligence.",
+        view: "market",
+        highlight: { selector: "#mkt-list", pad: 8 }
+      },
+      {
+        title: "Intelligence Panel",
+        body: "The right panel shows the full COSMIC profile for the selected property — score, verdict, signals, and context.",
+        view: "market",
+        highlight: { selector: "#mkt-detail", pad: 8 },
+        action: () => { const first = document.querySelector('.pg-prop-item'); if(first) first.click(); }
+      }
+    ],
+    endCta: "Next: go deeper with Full COSMIC Analysis."
+  },
+  {
+    title: "Full COSMIC Analysis",
+    steps: [
+      {
+        title: "Run Full COSMIC Analysis",
+        body: "Select any property, then click Run Full COSMIC Analysis to engage all four engines: METEOR, NOVA, ECLIPSE, PULSAR.",
+        view: "market",
+        highlight: { selector: "#mkt-detail", pad: 8 },
+        action: () => { const first = document.querySelector('.pg-prop-item'); if(first) first.click(); }
+      },
+      {
+        title: "Engine Breakdown",
+        body: "Four engines score different acquisition dimensions. METEOR scores the asset. NOVA infers causality. ECLIPSE projects probability. PULSAR stress-tests the thesis.",
+        view: "market",
+        highlight: { selector: "#cosmic-modal-content .engine-scores", pad: 8 }
+      },
+      {
+        title: "Recommended Action",
+        body: "AURORA synthesizes all engine outputs into a single recommendation: BUY, HOLD, or PASS — with primary drivers explained.",
+        view: "market",
+        highlight: { selector: "#cosmic-modal-content .aurora-verdict", pad: 8 }
+      },
+      {
+        title: "Trigger Conditions",
+        body: "Trigger conditions tell you exactly what would change the recommendation. These are your decision gates.",
+        view: "market",
+        highlight: { selector: "#cosmic-modal-content .trigger-conditions", pad: 8 }
+      }
+    ],
+    endCta: "Next: compare this property to better nearby alternatives."
+  },
+  {
+    title: "Comparing Alternatives",
+    steps: [
+      {
+        title: "Better Opportunities Nearby",
+        body: "This is one of the most important features. The system compares your selected property to stronger nearby targets — automatically.",
+        view: "market",
+        highlight: { selector: "#cosmic-modal-content", pad: 8 }
+      },
+      {
+        title: "Don't Settle",
+        body: "If a nearby property scores significantly higher, it surfaces here with the reason. You can jump directly into the better target without restarting your search.",
+        view: "market",
+        highlight: { selector: "#cosmic-modal-content", pad: 8 }
+      }
+    ],
+    endCta: "Next: save priority opportunities to your Watchlist."
+  },
+  {
+    title: "Saving Opportunities",
+    steps: [
+      {
+        title: "Add to Watchlist",
+        body: "Every property card has an Add to Watchlist action. Use it to track high-conviction targets across sessions.",
+        view: "market",
+        highlight: { selector: "#mkt-detail", pad: 8 },
+        action: () => { const first = document.querySelector('.pg-prop-item'); if(first) first.click(); }
+      },
+      {
+        title: "Your Buyer Memory",
+        body: "Watchlist persists across sessions. Your tracked targets stay here until you remove them. This is your active acquisition pipeline.",
+        view: "watchlist",
+        highlight: null
+      }
+    ],
+    endCta: "Next: zoom out and understand market-level context."
+  },
+  {
+    title: "Market-Level Research",
+    steps: [
+      {
+        title: "Market Summary",
+        body: "County-level intelligence. Property counts, appraised totals, average values, top uses — all in one view.",
+        view: "summary",
+        highlight: null
+      },
+      {
+        title: "Scale + Composition",
+        body: "Use Market Summary alongside Deal Finder and Market Intelligence to understand where to focus deeper research.",
+        view: "summary",
+        highlight: { selector: "#summary-cards", pad: 8 }
+      }
+    ],
+    endCta: "Tour Complete."
+  }
+];
+
+// ── Tour Selector ──
+function openTourSelector() {
+  const overlay = document.getElementById('demo-overlay');
+  overlay.classList.add('active');
+  overlay.innerHTML = `
+    <div class="demo-backdrop"></div>
+    <div style="
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(28,27,28,0.97); border:1px solid rgba(65,71,85,0.3);
+      padding:2.5rem; width:480px; max-width:92vw;
+      box-shadow:0 0 80px rgba(167,200,255,0.06);
+    ">
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <p style="font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#a7c8ff; margin-bottom:4px;">PropertyGraph</p>
+          <h2 style="font-family:'Manrope',sans-serif; font-size:1.4rem; font-weight:900; color:#e5e2e3;">Guided Tour</h2>
+        </div>
+        <button onclick="endDemo()" style="color:rgba(139,144,160,0.4); background:none; border:none; cursor:pointer; padding:4px;">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p style="font-family:'Inter',sans-serif; font-size:0.875rem; color:rgba(193,198,215,0.7); margin-bottom:2rem; line-height:1.6;">
+        Choose how you want to explore PropertyGraph. Quick Tour gets you oriented in 90 seconds. Full Tour walks every workflow.
+      </p>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <button onclick="startQuickTour()" style="
+          padding:1rem 1.5rem; background:rgba(167,200,255,0.08); border:1px solid rgba(167,200,255,0.25);
+          color:#a7c8ff; font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:700;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; text-align:left;
+          display:flex; justify-content:space-between; align-items:center;
+        ">
+          <div>
+            <div style="font-size:13px; font-weight:800; margin-bottom:2px;">Quick Tour</div>
+            <div style="font-size:10px; opacity:0.6; font-weight:400;">90 seconds · 6 key surfaces</div>
+          </div>
+          <span class="material-symbols-outlined" style="font-size:18px;">arrow_forward</span>
+        </button>
+        <button onclick="startFullTour()" style="
+          padding:1rem 1.5rem; background:rgba(78,222,163,0.06); border:1px solid rgba(78,222,163,0.2);
+          color:#4edea3; font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:700;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; text-align:left;
+          display:flex; justify-content:space-between; align-items:center;
+        ">
+          <div>
+            <div style="font-size:13px; font-weight:800; margin-bottom:2px;">Full Tour</div>
+            <div style="font-size:10px; opacity:0.6; font-weight:400;">7 chapters · comprehensive walkthrough</div>
+          </div>
+          <span class="material-symbols-outlined" style="font-size:18px;">arrow_forward</span>
+        </button>
+        <button onclick="endDemo()" style="
+          padding:0.75rem 1.5rem; background:none; border:1px solid rgba(65,71,85,0.3);
+          color:rgba(139,144,160,0.5); font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:700;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;
+        ">
+          Skip
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Tour Setup ──
+function _tourEnsureHarris() {
+  // Ensure Harris TX is the selected market for demo safety
+  const mktEl = document.querySelector('[data-county="Harris"]');
+  if (mktEl) mktEl.click();
+}
+
+function startQuickTour() {
+  tourType = 'quick';
+  tourStepIndex = 0;
+  tourActive = true;
+  _tourEnsureHarris();
+  setTimeout(() => _renderQuickStep(), 300);
+}
+
+function startFullTour() {
+  tourType = 'full';
+  tourChapterIndex = 0;
+  tourStepIndex = 0;
+  tourActive = true;
+  _tourEnsureHarris();
+  setTimeout(() => _renderFullStep(), 300);
+}
+
+// ── Quick Tour Renderer ──
+function _renderQuickStep() {
+  const overlay = document.getElementById('demo-overlay');
+  overlay.classList.add('active');
+  const step = QUICK_TOUR_STEPS[tourStepIndex];
+  const total = QUICK_TOUR_STEPS.length;
+
+  showView(step.view);
+  if (step.action) setTimeout(step.action, 300);
+
+  const dots = QUICK_TOUR_STEPS.map((_,i) => `<div class="demo-step-dot ${i===tourStepIndex?'active':''}"></div>`).join('');
+
+  overlay.innerHTML = `
+    <div class="demo-backdrop"></div>
+    <div class="demo-highlight" id="demo-hl" style="display:none"></div>
+    <div style="
+      position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
+      background:rgba(28,27,28,0.95); border:1px solid rgba(65,71,85,0.3);
+      padding:1.5rem 2rem; width:520px; max-width:92vw;
+      box-shadow:0 0 60px rgba(167,200,255,0.08);
+    ">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
+        <div>
+          <p style="font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#a7c8ff; margin-bottom:4px;">Quick Tour · Step ${tourStepIndex+1} of ${total}</p>
+          <h3 style="font-family:'Manrope',sans-serif; font-size:1.1rem; font-weight:900; color:#e5e2e3;">${step.title}</h3>
+        </div>
+        <button onclick="endDemo()" style="color:rgba(139,144,160,0.4); background:none; border:none; cursor:pointer; padding:4px;">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p style="font-family:'Inter',sans-serif; font-size:0.875rem; color:rgba(193,198,215,0.75); line-height:1.65; margin-bottom:1.25rem;">${step.body}</p>
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; gap:6px;">${dots}</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button onclick="endDemo()" style="padding:6px 12px; background:none; border:1px solid rgba(65,71,85,0.3); color:rgba(139,144,160,0.5); font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">Exit</button>
+          <button onclick="_quickSkip()" style="padding:6px 12px; background:none; border:1px solid rgba(65,71,85,0.3); color:rgba(139,144,160,0.5); font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">Skip Tour</button>
+          ${tourStepIndex > 0 ? `<button onclick="_quickBack()" style="padding:8px 14px; background:none; border:1px solid rgba(65,71,85,0.4); color:#a7c8ff; font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">← Back</button>` : ''}
+          <button onclick="_quickNext()" style="padding:8px 18px; background:#a7c8ff; border:none; color:#003061; font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">${tourStepIndex === total-1 ? 'Finish →' : 'Next →'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Position highlight after render
+  setTimeout(() => {
+    const hl = document.getElementById('demo-hl');
+    if (hl && step.highlight && step.highlight.selector) {
+      const el = document.querySelector(step.highlight.selector);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const p = step.highlight.pad || 8;
+        hl.style.cssText = `display:block;position:fixed;top:${r.top-p}px;left:${r.left-p}px;width:${r.width+p*2}px;height:${r.height+p*2}px;border-radius:4px;pointer-events:none;z-index:1000;box-shadow:0 0 0 4px rgba(167,200,255,0.5),0 0 30px rgba(167,200,255,0.2);`;
+      }
+    }
+  }, 350);
+}
+
+function _quickNext() {
+  tourStepIndex++;
+  if (tourStepIndex >= QUICK_TOUR_STEPS.length) {
+    _showQuickTourEnd();
+  } else {
+    _renderQuickStep();
+  }
+}
+
+function _quickBack() {
+  if (tourStepIndex > 0) {
+    tourStepIndex--;
+    _renderQuickStep();
+  }
+}
+
+function _quickSkip() {
+  endDemo();
+}
+
+function _showQuickTourEnd() {
+  const overlay = document.getElementById('demo-overlay');
+  overlay.innerHTML = `
+    <div class="demo-backdrop"></div>
+    <div style="
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(28,27,28,0.97); border:1px solid rgba(65,71,85,0.3);
+      padding:2.5rem; width:480px; max-width:92vw;
+      box-shadow:0 0 80px rgba(78,222,163,0.06);
+      text-align:center;
+    ">
+      <div style="width:48px; height:48px; background:rgba(78,222,163,0.1); border:1px solid rgba(78,222,163,0.3); display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem auto;">
+        <span class="material-symbols-outlined" style="color:#4edea3; font-size:24px;">check_circle</span>
+      </div>
+      <h2 style="font-family:'Manrope',sans-serif; font-size:1.3rem; font-weight:900; color:#e5e2e3; margin-bottom:0.75rem;">You're Ready</h2>
+      <p style="font-family:'Inter',sans-serif; font-size:0.875rem; color:rgba(193,198,215,0.7); line-height:1.6; margin-bottom:2rem;">Start with Deal Finder or explore Market Intelligence.</p>
+      <div style="display:flex; gap:12px; justify-content:center;">
+        <button onclick="endDemo();showView('overview');setTimeout(()=>{const b=document.getElementById('deal-finder-btn');if(b)b.click();},300);" style="
+          padding:10px 20px; background:#a7c8ff; border:none; color:#003061;
+          font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:800;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;
+        ">Start Deal Finder</button>
+        <button onclick="endDemo();showView('market');" style="
+          padding:10px 20px; background:none; border:1px solid rgba(78,222,163,0.3); color:#4edea3;
+          font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:800;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;
+        ">Explore Market Intelligence</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Full Tour Renderer ──
+function _renderFullStep() {
+  const overlay = document.getElementById('demo-overlay');
+  overlay.classList.add('active');
+  const chapter = FULL_TOUR_CHAPTERS[tourChapterIndex];
+  const step = chapter.steps[tourStepIndex];
+  const totalChapters = FULL_TOUR_CHAPTERS.length;
+  const totalSteps = chapter.steps.length;
+
+  showView(step.view);
+  if (step.action) setTimeout(step.action, 300);
+
+  // Chapter sidebar
+  const chapterList = FULL_TOUR_CHAPTERS.map((ch, ci) => {
+    const active = ci === tourChapterIndex;
+    const done = ci < tourChapterIndex;
+    return `<div onclick="_jumpToChapter(${ci})" style="
+      padding:7px 10px; cursor:pointer; display:flex; align-items:center; gap:8px;
+      font-family:'Space Grotesk',sans-serif; font-size:9px; font-weight:700;
+      text-transform:uppercase; letter-spacing:0.06em;
+      color:${active ? '#a7c8ff' : done ? 'rgba(78,222,163,0.7)' : 'rgba(139,144,160,0.4)'};
+      border-left:2px solid ${active ? '#a7c8ff' : done ? 'rgba(78,222,163,0.3)' : 'rgba(65,71,85,0.3)'};
+      background:${active ? 'rgba(167,200,255,0.05)' : 'none'};
+      margin-bottom:2px;
+    ">${done ? '✓ ' : ''}${ci+1}. ${ch.title}</div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div class="demo-backdrop"></div>
+    <div class="demo-highlight" id="demo-hl" style="display:none"></div>
+    <div style="
+      position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
+      display:flex; gap:0; max-width:94vw;
+      box-shadow:0 0 60px rgba(167,200,255,0.08);
+    ">
+      <!-- Chapter Sidebar -->
+      <div style="
+        background:rgba(20,19,20,0.97); border:1px solid rgba(65,71,85,0.3);
+        border-right:none; padding:1.25rem 0.75rem; width:180px; flex-shrink:0;
+      ">
+        <p style="font-family:'Space Grotesk',sans-serif; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:rgba(139,144,160,0.4); margin-bottom:10px; padding:0 10px;">Chapters</p>
+        ${chapterList}
+      </div>
+      <!-- Main Card -->
+      <div style="
+        background:rgba(28,27,28,0.97); border:1px solid rgba(65,71,85,0.3);
+        padding:1.5rem 1.75rem; width:460px;
+      ">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.875rem;">
+          <div>
+            <p style="font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#4edea3; margin-bottom:3px;">Chapter ${tourChapterIndex+1} of ${totalChapters} &middot; Step ${tourStepIndex+1} of ${totalSteps}</p>
+            <h3 style="font-family:'Manrope',sans-serif; font-size:1.1rem; font-weight:900; color:#e5e2e3;">${step.title}</h3>
+          </div>
+          <button onclick="endDemo()" style="color:rgba(139,144,160,0.4); background:none; border:none; cursor:pointer; padding:4px; flex-shrink:0;">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <p style="font-family:'Inter',sans-serif; font-size:0.85rem; color:rgba(193,198,215,0.75); line-height:1.65; margin-bottom:1.25rem;">${step.body}</p>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button onclick="endDemo()" style="padding:6px 10px; background:none; border:1px solid rgba(65,71,85,0.3); color:rgba(139,144,160,0.5); font-family:'Space Grotesk',sans-serif; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">Exit</button>
+          <button onclick="_fullSkipChapter()" style="padding:6px 10px; background:none; border:1px solid rgba(65,71,85,0.3); color:rgba(139,144,160,0.5); font-family:'Space Grotesk',sans-serif; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">Skip Chapter</button>
+          <div style="flex:1;"></div>
+          ${(tourChapterIndex > 0 || tourStepIndex > 0) ? `<button onclick="_fullBack()" style="padding:8px 12px; background:none; border:1px solid rgba(65,71,85,0.4); color:#a7c8ff; font-family:'Space Grotesk',sans-serif; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">← Back</button>` : ''}
+          <button onclick="_fullNext()" style="padding:8px 16px; background:#a7c8ff; border:none; color:#003061; font-family:'Space Grotesk',sans-serif; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;">${(tourStepIndex === totalSteps-1 && tourChapterIndex === totalChapters-1) ? 'Finish →' : (tourStepIndex === totalSteps-1 ? 'Next Chapter →' : 'Next →')}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Position highlight
+  setTimeout(() => {
+    const hl = document.getElementById('demo-hl');
+    if (hl && step.highlight && step.highlight.selector) {
+      const el = document.querySelector(step.highlight.selector);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const p = step.highlight.pad || 8;
+        hl.style.cssText = `display:block;position:fixed;top:${r.top-p}px;left:${r.left-p}px;width:${r.width+p*2}px;height:${r.height+p*2}px;border-radius:4px;pointer-events:none;z-index:1000;box-shadow:0 0 0 4px rgba(167,200,255,0.5),0 0 30px rgba(167,200,255,0.2);`;
+      }
+    }
+  }, 350);
+}
+
+function _fullNext() {
+  const chapter = FULL_TOUR_CHAPTERS[tourChapterIndex];
+  if (tourStepIndex < chapter.steps.length - 1) {
+    tourStepIndex++;
+    _renderFullStep();
+  } else {
+    // Move to next chapter
+    tourChapterIndex++;
+    tourStepIndex = 0;
+    if (tourChapterIndex >= FULL_TOUR_CHAPTERS.length) {
+      _showFullTourEnd();
+    } else {
+      _renderFullStep();
+    }
+  }
+}
+
+function _fullBack() {
+  if (tourStepIndex > 0) {
+    tourStepIndex--;
+    _renderFullStep();
+  } else if (tourChapterIndex > 0) {
+    tourChapterIndex--;
+    tourStepIndex = FULL_TOUR_CHAPTERS[tourChapterIndex].steps.length - 1;
+    _renderFullStep();
+  }
+}
+
+function _fullSkipChapter() {
+  tourChapterIndex++;
+  tourStepIndex = 0;
+  if (tourChapterIndex >= FULL_TOUR_CHAPTERS.length) {
+    _showFullTourEnd();
+  } else {
+    _renderFullStep();
+  }
+}
+
+function _jumpToChapter(ci) {
+  tourChapterIndex = ci;
+  tourStepIndex = 0;
+  _renderFullStep();
+}
+
+function _showFullTourEnd() {
+  const overlay = document.getElementById('demo-overlay');
+  overlay.innerHTML = `
+    <div class="demo-backdrop"></div>
+    <div style="
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(28,27,28,0.97); border:1px solid rgba(65,71,85,0.3);
+      padding:2.5rem; width:480px; max-width:92vw;
+      box-shadow:0 0 80px rgba(78,222,163,0.06);
+      text-align:center;
+    ">
+      <div style="width:48px; height:48px; background:rgba(78,222,163,0.1); border:1px solid rgba(78,222,163,0.3); display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem auto;">
+        <span class="material-symbols-outlined" style="color:#4edea3; font-size:24px;">verified</span>
+      </div>
+      <p style="font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#4edea3; margin-bottom:8px;">Tour Complete</p>
+      <h2 style="font-family:'Manrope',sans-serif; font-size:1.3rem; font-weight:900; color:#e5e2e3; margin-bottom:0.75rem;">PropertyGraph Tour Complete</h2>
+      <p style="font-family:'Inter',sans-serif; font-size:0.875rem; color:rgba(193,198,215,0.7); line-height:1.6; margin-bottom:2rem;">You've seen how to surface targets, work the map, run Full COSMIC Analysis, compare nearby alternatives, and save opportunities for follow-up.</p>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <button onclick="endDemo();showView('overview');" style="
+          padding:10px 16px; background:rgba(167,200,255,0.08); border:1px solid rgba(167,200,255,0.25);
+          color:#a7c8ff; font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:800;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;
+        ">Go to Overview</button>
+        <button onclick="endDemo();showView('overview');setTimeout(()=>{const b=document.getElementById('deal-finder-btn');if(b)b.click();},300);" style="
+          padding:10px 16px; background:#a7c8ff; border:none; color:#003061;
+          font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:800;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;
+        ">Open Deal Finder</button>
+        <button onclick="endDemo();showView('market');" style="
+          padding:10px 16px; background:none; border:1px solid rgba(78,222,163,0.3); color:#4edea3;
+          font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:800;
+          text-transform:uppercase; letter-spacing:0.08em; cursor:pointer;
+        ">Open Market Intelligence</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── End Demo ──
+function endDemo() {
+  tourActive = false;
+  tourType = null;
+  const overlay = document.getElementById('demo-overlay');
+  overlay.classList.remove('active');
+  overlay.innerHTML = '';
+}
+
+// Legacy aliases (keep for safety)
+function startDemo() { openTourSelector(); }
+
+// Boot: map init deferred — handled lazily when Market Intelligence view opens
+// Boot sequence — overview first, market loads lazily on first visit
+// Seed demo watchlist if empty
+(async function seedWatchlist() {
+  if (getWatchlist().length === 0) {
+    const seeds = await query(`${SB}/properties?county=eq.Harris&total_appraised_value=gt.1000000&land_value=gt.0&limit=3&select=id,address,city,county,state,lat,lng,total_appraised_value,land_value,improvement_value,owner_name,property_use,year_built,cad_source,acct_number`);
+    if (seeds && seeds.length) { saveWatchlist(seeds.slice(0,3)); }
+  }
+})();
+showView('overview');
+</script>
+
+<!-- DEMO OVERLAY -->
+<div id="demo-overlay" class="fixed inset-0 z-[999] pointer-events-none"></div>
+
+</body>
+</html>
