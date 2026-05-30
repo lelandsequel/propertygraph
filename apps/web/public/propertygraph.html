@@ -1673,7 +1673,7 @@ async function loadReportsData() {
     html += `<div class="bg-surface-container-low rounded-xl p-5 border border-outline-variant/10">
       <h3 class="font-headline text-base font-bold ${color} mb-4">${c} County</h3>
       <div class="grid grid-cols-2 gap-3">
-        <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Properties (sample)</p><p class="font-headline text-lg font-black text-on-surface">${data.length.toLocaleString()}</p></div>
+        <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Properties (evaluated)</p><p class="font-headline text-lg font-black text-on-surface">${data.length.toLocaleString()}</p></div>
         <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Total Appraised</p><p class="font-headline text-lg font-black text-on-surface">${fmtVal(totalVal)}</p></div>
         <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Avg Value</p><p class="font-headline text-lg font-black text-on-surface">${fmtVal(avgVal)}</p></div>
         <div><p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Investor Owned</p><p class="font-headline text-lg font-black text-amber-400">${invPct}%</p></div>
@@ -1738,7 +1738,7 @@ async function loadRiskData() {
         </div>
         <span class="font-label font-bold text-amber-400 text-sm">${invPct}%</span>
       </div>
-      <p class="text-[10px] text-outline/50">${invCount.toLocaleString()} of ${scored.length.toLocaleString()} sampled properties are investor-owned</p>
+      <p class="text-[10px] text-outline/50">${invCount.toLocaleString()} of ${scored.length.toLocaleString()} evaluated records are investor-owned</p>
     </div>
     <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/10">
       <h3 class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Value-at-Risk by County (High Risk tier)</h3>
@@ -1753,7 +1753,7 @@ async function loadRiskData() {
         </div>
       </div>
     </div>
-    <p class="text-[9px] text-outline/30 font-label uppercase tracking-widest text-center">Risk tiers computed from 500-property sample per county via AURORA pipeline</p>
+    <p class="text-[9px] text-outline/30 font-label uppercase tracking-widest text-center">Risk tiers computed from the current AURORA evaluation subset per county</p>
   </div>`;
 }
 
@@ -1790,17 +1790,17 @@ async function loadOverview() {
     <div class="bg-surface-container rounded-xl p-5 border border-secondary/20">
 	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Sample</p>
 	      <p class="font-headline text-3xl font-black text-secondary">${buy}</p>
-	      <p class="text-[10px] text-secondary/60 mt-1">AURORA ≥ 72 · sampled from indexed records</p>
+	      <p class="text-[10px] text-secondary/60 mt-1">AURORA ≥ 72 · evaluated from indexed records</p>
     </div>
     <div class="bg-surface-container rounded-xl p-5 border border-primary/20">
 	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">HOLD Sample</p>
 	      <p class="font-headline text-3xl font-black text-primary">${hold}</p>
-	      <p class="text-[10px] text-primary/60 mt-1">Monitor tier · sampled from indexed records</p>
+	      <p class="text-[10px] text-primary/60 mt-1">Monitor tier · evaluated from indexed records</p>
     </div>
     <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
 	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">PASS Sample</p>
 	      <p class="font-headline text-3xl font-black text-outline/60">${pass}</p>
-	      <p class="text-[10px] text-outline/30 mt-1">Lower-priority tier · sampled from indexed records</p>
+	      <p class="text-[10px] text-outline/30 mt-1">Lower-priority tier · evaluated from indexed records</p>
     </div>`;
   // Top targets
   _overviewCache = {}; allScored.forEach(p=>{ _overviewCache[p.id]=p; });
@@ -1823,7 +1823,7 @@ async function loadOverview() {
       </div>
       <span class="px-3 py-1.5 rounded-full text-[10px] font-label font-bold uppercase tracking-wider flex-shrink-0 ${s.verdict==='BUY'?'bg-secondary/10 text-secondary border border-secondary/20':'bg-primary/10 text-primary border border-primary/20'}">${s.verdict}</span>
     </div>`;
-	  }).join('') + '<p class="text-[9px] text-outline/30 font-label uppercase tracking-widest mt-3 text-center">Targets are ranked from a refreshed AURORA sample; open Market Intelligence for source-level record inspection.</p>' : '<p class="text-outline/30 font-label text-[10px] uppercase tracking-widest text-center py-8">Loading acquisition targets...</p>';
+	  }).join('') + '<p class="text-[9px] text-outline/30 font-label uppercase tracking-widest mt-3 text-center">Targets are ranked from a refreshed AURORA evaluation subset; open Market Intelligence for source-level record inspection.</p>' : '<p class="text-outline/30 font-label text-[10px] uppercase tracking-widest text-center py-8">Loading acquisition targets...</p>';
 }
 
 /* ─── MARKET SUMMARY ─── */
@@ -1864,7 +1864,7 @@ async function loadSummary() {
       <h2 class="font-headline text-xl font-bold ${accent.split(' ')[0]} mb-5">${labels[c]}</h2>
       <div class="grid grid-cols-4 gap-4 mb-6">
         <div class="bg-surface-container-low rounded-lg p-4 border border-outline-variant/10">
-          <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Properties (sample)</p>
+          <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-1">Properties (evaluated)</p>
           <p class="font-headline text-xl font-black text-on-surface">${data.length.toLocaleString()}</p>
         </div>
         <div class="bg-surface-container-low rounded-lg p-4 border border-outline-variant/10">
@@ -1898,7 +1898,7 @@ async function loadSummary() {
           <p class="font-headline text-xl font-black ${netDelta < 0 ? 'text-secondary' : netDelta > 0 ? 'text-tertiary' : 'text-primary'}">${netDelta ? `${netDelta > 0 ? '+' : '-'}${fmtVal(Math.abs(netDelta))}` : '—'}</p>
         </div>
       </div>
-      <p class="text-[9px] text-outline/40 font-label uppercase tracking-widest mb-6">${movementRows.length.toLocaleString()} of ${data.length.toLocaleString()} sampled records exposed source-backed prior appraisal fields; ${flat.toLocaleString()} unchanged.</p>
+      <p class="text-[9px] text-outline/40 font-label uppercase tracking-widest mb-6">${movementRows.length.toLocaleString()} of ${data.length.toLocaleString()} evaluated records exposed source-backed prior appraisal fields; ${flat.toLocaleString()} unchanged.</p>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <h3 class="font-label text-[10px] uppercase tracking-widest text-outline mb-3">Top Property Uses</h3>
@@ -1915,7 +1915,7 @@ async function loadSummary() {
             ${topOwners.length?topOwners.map(([name,count])=>`<div class="flex justify-between items-center text-xs cursor-pointer hover:text-primary pg-transition" onclick="openOwnerModal('${name.replace(/'/g,"\\'")}','${c}')">
               <span class="text-on-surface-variant/70 truncate flex-1 mr-2">${name.substring(0,25)}</span>
               <span class="font-bold text-amber-400 flex-shrink-0">${count}</span>
-            </div>`).join(''):'<p class="text-[10px] text-outline/40 font-label">No investor owners in sample</p>'}
+            </div>`).join(''):'<p class="text-[10px] text-outline/40 font-label">No investor owners in evaluated set</p>'}
           </div>
         </div>
       </div>
