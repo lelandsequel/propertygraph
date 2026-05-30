@@ -135,7 +135,7 @@ Investor demand (LPs want proprietary intelligence)
 
 The tools have changed. CoStar + LoopNet are backward-looking.
 
-PropertyGraph is forward-looking. Real-time. Proprietary.
+PropertyGraph is forward-looking. Source-backed. Proprietary.
 
 ---
 
@@ -158,8 +158,8 @@ SLIDE 10 — CURRENT STATE
 Data: 25K+ Boston properties (county records, 2026)
 Entity Resolution: COSMIC (14-engine pipeline)
 Signals: 900+ (acquisition patterns, clustering, roll-up candidates)
-API: Real-time search + graph expansion
-Updates: Daily property record feeds
+API: Indexed search + graph expansion
+Updates: Scheduled source refresh
 
 Live at: http://localhost:3000 (or propertygraph.io on public deploy)
 

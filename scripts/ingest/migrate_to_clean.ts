@@ -16,7 +16,11 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://bkeixpzvoilaibnfkzvl.supabase.co";
 const SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrZWl4cHp2b2lsYWlibmZrenZsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDA1NTUzNywiZXhwIjoyMDg5NjMxNTM3fQ.aR_ZqRo7B3GnSDI9v0aaTaiFCDyP8c75AiwA4nBQ4tk";
+  process.env.SUPABASE_SERVICE_KEY;
+
+if (!SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY is required");
+}
 
 const BATCH_SIZE = 500;
 const LOG_EVERY = 1000;

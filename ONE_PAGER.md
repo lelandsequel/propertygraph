@@ -44,10 +44,10 @@ Whoever sees the entity chains first wins.
 
 ## Current State
 
-**Data:** 25K+ Boston properties (live)
+**Data:** Active source-backed property index
 **Signals:** 900+ (acquisition patterns, clustering, roll-up candidates)
-**API:** Real-time search + graph expansion
-**Demo:** Live at http://localhost:3000
+**API:** Indexed search + graph expansion
+**App:** Running locally at http://localhost:3000
 
 ---
 
@@ -68,7 +68,7 @@ Whoever sees the entity chains first wins.
 
 | Factor | PropertyGraph | CoStar | LoopNet |
 |--------|---------------|--------|---------|
-| Real-time | ✓ | ✗ | ✗ |
+| Scheduled source refresh | ✓ | ✗ | ✗ |
 | Unlisted deals | ✓ | ✗ | ✗ |
 | Entity reconstruction | ✓ | ✗ | ✗ |
 | Ownership visibility | 100% | 30% | 5% |

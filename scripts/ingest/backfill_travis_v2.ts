@@ -5,7 +5,11 @@
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://bkeixpzvoilaibnfkzvl.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrZWl4cHp2b2lsYWlibmZrenZsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDA1NTUzNywiZXhwIjoyMDg5NjMxNTM3fQ.aR_ZqRo7B3GnSDI9v0aaTaiFCDyP8c75AiwA4nBQ4tk";
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_KEY) {
+  throw new Error("SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY is required");
+}
 const BATCH = 200;
 const MAX_RETRIES = 5;
 const RETRY_DELAY = 3000;

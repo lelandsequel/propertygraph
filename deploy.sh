@@ -22,4 +22,8 @@ if [ "$FORCE_DEPLOY" != "1" ]; then
 fi
 
 cd apps/web
-vercel --prod --token vcp_25XXpkllt3NTRGX6jRAUJNPSKTtk71ViSlGSZH8l7DCB7tfVIX4DPYz1
+if [ -z "$VERCEL_TOKEN" ]; then
+  echo "VERCEL_TOKEN is required"
+  exit 1
+fi
+vercel --prod --token "$VERCEL_TOKEN"

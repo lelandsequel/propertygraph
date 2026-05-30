@@ -53,7 +53,7 @@ Today:
 - Market timing = historical data + intuition
 - Portfolio optimization = manual analysis
 
-What's missing: Real-time visibility into competitor moves + emerging opportunities.
+What's missing: source-backed visibility into competitor moves + emerging opportunities.
 
 ---
 

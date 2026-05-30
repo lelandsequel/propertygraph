@@ -152,7 +152,7 @@ CBRE/JLL Tools:
 - Slow (manual brokerage data)
 
 PropertyGraph:
-✓ Real-time (live public records)
+✓ Scheduled source refresh (public records)
 ✓ Comprehensive (unlisted + listed)
 ✓ Intelligent (COSMIC entity resolution)
 ✓ Scalable (API-driven, not broker-dependent)

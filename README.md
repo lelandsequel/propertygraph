@@ -1,8 +1,8 @@
 # PROPERTYGRAPH
 
-Commercial real estate ownership intelligence — Harris County TX.
+Commercial real estate ownership intelligence across the active PropertyGraph index.
 
-Dark, sharp, high-signal. Graph-based CRE ownership analysis with multi-layer entity resolution and signal detection.
+Dark, sharp, high-signal. Graph-based CRE ownership analysis with multi-layer entity resolution, value-movement freshness, and signal detection.
 
 ## Stack
 
@@ -21,7 +21,7 @@ propertygraph/
 │       ├── components/    ← React Flow nodes, graph canvas
 │       └── lib/           ← Supabase client
 ├── packages/db/           ← Supabase client + TypeScript types
-└── scripts/ingest/        ← Seed data generator
+└── scripts/ingest/        ← Source-ingest utilities and legacy seed helpers
 ```
 
 ## Setup
@@ -37,17 +37,23 @@ Edit `apps/web/.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=server-side-service-role-key
+CRON_SECRET=random-long-secret-for-vercel-cron
+PROPERTYGRAPH_REFRESH_WORKER_URL=https://your-ingest-worker.example.com/refresh
+PROPERTYGRAPH_REFRESH_WORKER_TOKEN=optional-worker-bearer-token
 ```
 
-### 3. Seed the Database
+### 3. Database
 
-Generate the SQL seed file:
+Production reads from Supabase `properties_clean` and related graph tables. Local seed helpers still exist for isolated development, but the app should not present seeded or generated rows as source-backed records.
+
+Optional local seed file:
 
 ```bash
 npx tsx scripts/ingest/seed.ts > seed.sql
 ```
 
-Then paste the contents of `seed.sql` into the **Supabase SQL Editor** and run it. This creates all tables and inserts 15 properties, 8 entities, ownership links, entity relationships, and 3 signals.
+Then paste the contents of `seed.sql` into the **Supabase SQL Editor** and run it.
 
 ### 4. Install Dependencies
 
@@ -63,14 +69,19 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Demo Flow
+## Operator Flow
 
-1. Search **"1400 Post Oak"** → dropdown shows the property
-2. Click → property page shows owner: **PostOak Capital Holdings LLC**
-3. Click **"View Ownership Graph →"** → graph loads
-4. Graph shows: LLC → 6 properties + parent holding company → individual (Marcus J. Thornton)
-5. Signal badge glows: **⚡ ACQUISITION PATTERN** and **⚡ CLUSTERED OWNERSHIP**
-6. Navigate to Marcus J. Thornton → see the full roll-up pattern across 7 entities
+1. Open the executive overview and confirm the active indexed property count.
+2. Use Market Intelligence to filter county records and inspect value movement.
+3. Open a property to review owner, current value, source vintage, prior value when present, and COSMIC signal state.
+4. Open ownership graph views to trace entity relationships.
+5. Treat unavailable prior values as a refusal, not a fabricated trend.
+
+## Weekly Refresh
+
+Vercel Cron calls `GET /api/cron/weekly-refresh` every Monday at 11:00 UTC. The route requires `CRON_SECRET` and triggers a real refresh worker through `PROPERTYGRAPH_REFRESH_WORKER_URL`.
+
+If the worker URL is missing, the endpoint returns a structured refusal and logs the attempted run. This is intentional: PropertyGraph must not pretend a refresh happened unless a source-backed ingest worker accepted the job.
 
 ## Routes
 
@@ -88,13 +99,9 @@ Open [http://localhost:3000](http://localhost:3000).
 | `GET /api/search?q=` | Search properties + entities by name |
 | `GET /api/graph/[entityId]` | Get nodes + edges for React Flow graph |
 | `GET /api/signals` | Get all active signals with entity names |
+| `GET /api/stats` | Active index count and county-level counts |
+| `GET /api/cron/weekly-refresh` | Weekly source-refresh trigger, guarded by `CRON_SECRET` |
 
-## Seed Data
+## Legacy Seed Fixture
 
-- **15 properties** — commercial, Houston TX area (Post Oak Blvd, Westheimer, Downtown)
-- **8 entities** — LLCs, trusts, corporations, 1 individual
-- **Multi-layer ownership chains** — LLC → holding company → trust → individual
-- **3 signals:**
-  1. Multi-property acquisition pattern (92% confidence)
-  2. Clustered ownership in ZIP 77056 (78% confidence)
-  3. Shared manager across 7 entities — roll-up candidate (89% confidence)
+The repo still includes a tiny seed fixture for local schema checks. It is not the product corpus and should never be described as the active PropertyGraph index.

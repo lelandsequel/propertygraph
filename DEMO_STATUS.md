@@ -43,12 +43,12 @@
 
 ---
 
-## Live Demo Capabilities
+## Active Index Capabilities
 
 ### Search
 - Address search across all 3 markets
 - Entity name search (owner/LLC lookup)
-- Real-time results
+- Source-backed indexed results
 
 ### Graph Visualization
 - Click any entity → expand ownership network

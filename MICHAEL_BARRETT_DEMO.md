@@ -196,7 +196,7 @@ PropertyGraph makes him **invisible** to his competitors. He sees deals 6 months
 **Data:** 25,000+ Boston-area properties (real estate records)
 **Entity Resolution:** COSMIC engines (proprietary AI) reconstructs relationships from fragmented names
 **Signals:** Acquisition patterns, clustering analysis, entity chain mapping
-**Updates:** Real-time (daily property record updates)
+**Updates:** Scheduled source refresh
 **API:** REST + GraphQL for integration with SMC systems
 
 ---

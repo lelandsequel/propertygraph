@@ -177,8 +177,8 @@ SLIDE 11 — CURRENT STATE
 Data: 5K+ Houston properties (live), expanding to full Texas
 Entity Resolution: COSMIC (proprietary AI)
 Signals: Land assembly, competitor tracking, market timing
-API: Real-time search + acquisition mapping
-Updates: Daily property records
+API: Indexed search + acquisition mapping
+Updates: Scheduled source refresh
 
 Live demo: http://localhost:3000
 
@@ -207,7 +207,7 @@ SLIDE 13 — THE MODEL
 
 Option 1: Subscription
 $10K/month (premium Texas data)
-- Real-time land assembly tracking
+- Source-backed land assembly tracking
 - Competitor intelligence
 - Market timing signals
 - Custom reports
