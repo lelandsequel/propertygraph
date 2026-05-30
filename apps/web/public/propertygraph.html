@@ -1788,19 +1788,19 @@ async function loadOverview() {
   const srEl = document.getElementById('overview-signal-row');
   if(srEl) srEl.innerHTML = `
     <div class="bg-surface-container rounded-xl p-5 border border-secondary/20">
-      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Signals</p>
-      <p class="font-headline text-3xl font-black text-secondary">${buy}</p>
-      <p class="text-[10px] text-secondary/60 mt-1">AURORA ≥ 72 · acquisition-grade</p>
+	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Sample</p>
+	      <p class="font-headline text-3xl font-black text-secondary">${buy}</p>
+	      <p class="text-[10px] text-secondary/60 mt-1">AURORA ≥ 72 · sampled from indexed records</p>
     </div>
     <div class="bg-surface-container rounded-xl p-5 border border-primary/20">
-      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">HOLD Signals</p>
-      <p class="font-headline text-3xl font-black text-primary">${hold}</p>
-      <p class="text-[10px] text-primary/60 mt-1">Monitor — moderate potential</p>
+	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">HOLD Sample</p>
+	      <p class="font-headline text-3xl font-black text-primary">${hold}</p>
+	      <p class="text-[10px] text-primary/60 mt-1">Monitor tier · sampled from indexed records</p>
     </div>
     <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
-      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">PASS Signals</p>
-      <p class="font-headline text-3xl font-black text-outline/60">${pass}</p>
-      <p class="text-[10px] text-outline/30 mt-1">Lower priority assets</p>
+	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">PASS Sample</p>
+	      <p class="font-headline text-3xl font-black text-outline/60">${pass}</p>
+	      <p class="text-[10px] text-outline/30 mt-1">Lower-priority tier · sampled from indexed records</p>
     </div>`;
   // Top targets
   _overviewCache = {}; allScored.forEach(p=>{ _overviewCache[p.id]=p; });
@@ -1823,7 +1823,7 @@ async function loadOverview() {
       </div>
       <span class="px-3 py-1.5 rounded-full text-[10px] font-label font-bold uppercase tracking-wider flex-shrink-0 ${s.verdict==='BUY'?'bg-secondary/10 text-secondary border border-secondary/20':'bg-primary/10 text-primary border border-primary/20'}">${s.verdict}</span>
     </div>`;
-  }).join('') : '<p class="text-outline/30 font-label text-[10px] uppercase tracking-widest text-center py-8">Loading acquisition targets...</p>';
+	  }).join('') + '<p class="text-[9px] text-outline/30 font-label uppercase tracking-widest mt-3 text-center">Targets are ranked from a refreshed AURORA sample; open Market Intelligence for source-level record inspection.</p>' : '<p class="text-outline/30 font-label text-[10px] uppercase tracking-widest text-center py-8">Loading acquisition targets...</p>';
 }
 
 /* ─── MARKET SUMMARY ─── */
