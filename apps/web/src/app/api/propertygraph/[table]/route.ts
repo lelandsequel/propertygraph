@@ -60,7 +60,7 @@ function normalizeSelect(table: string, select: string | null) {
 }
 
 function getSupabaseUrl() {
-  return (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL).replace(/\/$/, "");
+  return (process.env.PROPERTYGRAPH_SUPABASE_URL || process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL).replace(/\/$/, "");
 }
 
 function getSupabaseKey() {
