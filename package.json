@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
+    "package:mac": "node scripts/package-propertygraph-mac.mjs",
     "seed": "npx tsx scripts/ingest/seed.ts",
     "ingest": "bash scripts/run_ingest.sh",
     "ingest:demo": "bash scripts/run_ingest.sh 5000",

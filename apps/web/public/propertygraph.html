@@ -1788,17 +1788,17 @@ async function loadOverview() {
   const srEl = document.getElementById('overview-signal-row');
   if(srEl) srEl.innerHTML = `
     <div class="bg-surface-container rounded-xl p-5 border border-secondary/20">
-	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Sample</p>
+	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">BUY Candidates</p>
 	      <p class="font-headline text-3xl font-black text-secondary">${buy}</p>
 	      <p class="text-[10px] text-secondary/60 mt-1">AURORA ≥ 72 · evaluated from indexed records</p>
     </div>
     <div class="bg-surface-container rounded-xl p-5 border border-primary/20">
-	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">HOLD Sample</p>
+	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">HOLD Candidates</p>
 	      <p class="font-headline text-3xl font-black text-primary">${hold}</p>
 	      <p class="text-[10px] text-primary/60 mt-1">Monitor tier · evaluated from indexed records</p>
     </div>
     <div class="bg-surface-container rounded-xl p-5 border border-outline-variant/10">
-	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">PASS Sample</p>
+	      <p class="font-label text-[9px] uppercase tracking-widest text-outline mb-2">PASS Candidates</p>
 	      <p class="font-headline text-3xl font-black text-outline/60">${pass}</p>
 	      <p class="text-[10px] text-outline/30 mt-1">Lower-priority tier · evaluated from indexed records</p>
     </div>`;
@@ -1939,38 +1939,38 @@ let tourChapterIndex = 0;
 const QUICK_TOUR_STEPS = [
   {
     title: "Command Center",
-    body: "Your command center. Scale, top targets, navigation into core workflows.",
+    body: "Your command center. Verified corpus scale, target queues, and navigation into core workflows.",
     view: "overview",
     highlight: null
   },
   {
     title: "Deal Finder",
-    body: "The fastest path to ranked acquisition opportunities. Click Find Best Deals to surface the strongest targets in the selected market.",
+    body: "The fastest path to ranked acquisition opportunities. Click Find Best Deals to surface the strongest evaluated targets in the selected market.",
     view: "overview",
     highlight: { selector: "#deal-finder-btn", pad: 10 }
   },
   {
     title: "Market Intelligence",
-    body: "Map-led exploration. Heatmap, ownership clusters, and spatial context. Select a property to reveal decision-grade intelligence on the right.",
+    body: "Map-led exploration. Heatmap, ownership clusters, and spatial context. Select a property to reveal source-backed intelligence on the right.",
     view: "market",
     highlight: null
   },
   {
     title: "Full COSMIC Analysis",
-    body: "The decision engine. Translates raw scoring into: recommendation, primary drivers, trigger conditions, and better nearby alternatives.",
+    body: "The decision engine translates source fields into recommendation, primary drivers, trigger conditions, and better nearby alternatives.",
     view: "market",
     highlight: { selector: "#mkt-detail", pad: 8 },
     action: () => { const first = document.querySelector('.pg-prop-item'); if(first) first.click(); }
   },
   {
     title: "Better Opportunities Nearby",
-    body: "The system compares your selected property to stronger nearby options. Don't waste time on second-tier targets.",
+    body: "The system compares your selected property to stronger nearby options and shows the reason for the comparison.",
     view: "market",
     highlight: { selector: "#mkt-detail", pad: 8 }
   },
   {
     title: "Watchlist",
-    body: "Save high-priority targets here. Persists across sessions. Your buyer memory.",
+    body: "Save high-priority targets here. The watchlist becomes your active buyer memory.",
     view: "watchlist",
     highlight: null
   }
@@ -2001,7 +2001,7 @@ const FULL_TOUR_CHAPTERS = [
       },
       {
         title: "Top Acquisition Targets",
-        body: "The highest-scoring properties in the selected market surface here automatically. These are your strongest starting points.",
+        body: "The highest-scoring evaluated properties in the selected market surface here automatically. These are your strongest starting points.",
         view: "overview",
         highlight: { selector: "#overview-top-targets", pad: 8 }
       }
@@ -2019,14 +2019,14 @@ const FULL_TOUR_CHAPTERS = [
       },
       {
         title: "Ranked Results",
-        body: "Results are sorted by AURORA score — the synthesized acquisition signal. BUY indicates highest conviction. HOLD means watch. PASS means skip.",
+        body: "Results are sorted by AURORA score. BUY indicates highest conviction inside the evaluated set. HOLD means watch. PASS means lower priority.",
         view: "overview",
         highlight: { selector: "#deal-finder-panel", pad: 8 },
         action: () => { const btn = document.getElementById('deal-finder-btn'); if(btn) btn.click(); }
       },
       {
         title: "Reason Lines",
-        body: "Every result includes a reason line — why this asset was surfaced. Not just a score. Decision context.",
+        body: "Every result includes a reason line explaining why this asset surfaced. Not just a score: decision context.",
         view: "overview",
         highlight: { selector: "#deal-finder-panel .pg-prop-item", pad: 6 }
       }
@@ -2050,7 +2050,7 @@ const FULL_TOUR_CHAPTERS = [
       },
       {
         title: "Property List",
-        body: "The left panel lists all targets in the current view. Select one to focus it on the map and load decision-grade intelligence.",
+        body: "The left panel lists targets in the current view. Select one to focus it on the map and load source-backed intelligence.",
         view: "market",
         highlight: { selector: "#mkt-list", pad: 8 }
       },
@@ -2082,7 +2082,7 @@ const FULL_TOUR_CHAPTERS = [
       },
       {
         title: "Recommended Action",
-        body: "AURORA synthesizes all engine outputs into a single recommendation: BUY, HOLD, or PASS — with primary drivers explained.",
+        body: "AURORA synthesizes the engine outputs into a recommendation: BUY, HOLD, or PASS, with primary drivers explained.",
         view: "market",
         highlight: { selector: "#cosmic-modal-content .aurora-verdict", pad: 8 }
       },
@@ -2106,7 +2106,7 @@ const FULL_TOUR_CHAPTERS = [
       },
       {
         title: "Don't Settle",
-        body: "If a nearby property scores significantly higher, it surfaces here with the reason. You can jump directly into the better target without restarting your search.",
+        body: "If a nearby property scores significantly higher, it surfaces here with the reason. You can inspect the stronger target without restarting your search.",
         view: "market",
         highlight: { selector: "#cosmic-modal-content", pad: 8 }
       }
